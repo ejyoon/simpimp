@@ -7,8 +7,8 @@
 
 ## PRELIMINARIES
 rm(list = ls())
-source("~/Projects/R/Ranalysis/useful.R")
-source("~/Projects/R/Ranalysis/et_helper.R")
+source("https://github.com/ejyoon/simpimp/tree/master/Data_analysis/info/useful.R")
+source("https://github.com/ejyoon/simpimp/tree/master/Data_analysis/info/et_helper.R")
 
 raw.data.path <- "raw_data/"
 info.path <- "info/"
