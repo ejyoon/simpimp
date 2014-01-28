@@ -7,8 +7,9 @@
 
 ## PRELIMINARIES
 rm(list = ls())
-source("https://github.com/ejyoon/simpimp/tree/master/Data_analysis/info/useful.R")
-source("https://github.com/ejyoon/simpimp/tree/master/Data_analysis/info/et_helper.R")
+setwd("/Users/ericang/Documents/Erica/Stanford/2013-Q2-Winter/Research/simpimpGIT/Data_analysis/")
+source("/Users/ericang/Documents/Erica/Stanford/2013-Q2-Winter/Research/simpimpGIT/Data_analysis/R_scripts/useful.R")
+source("/Users/ericang/Documents/Erica/Stanford/2013-Q2-Winter/Research/simpimpGIT/Data_analysis/R_scripts/et_helper.R")
 
 raw.data.path <- "raw_data/"
 info.path <- "info/"
@@ -32,6 +33,6 @@ for (file.name in files) {
 
 ## WRITE DATA OUT TO CSV FOR EASY ACCESS
 write.csv(all.data,paste(processed.data.path,
-                         "simpimp processed.csv",sep=""),
+                         "simpimp_processed.csv",sep=""),
           row.names=FALSE) 
 

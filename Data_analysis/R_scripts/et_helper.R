@@ -133,7 +133,7 @@ roi.check <- function (d, rois) {
 ## create timestamps starting from the point of disambiguation
 ################################################################################
 
-rezero.trials <- function (d,onset.name="target.onset") {
+rezero.trials <- function (d,onset.name="targetOnset") {
   ddply(d,.(stimulus,subid), function(x) {
     x$t.crit <- x$t.stim - x[,onset.name]
     return(x)

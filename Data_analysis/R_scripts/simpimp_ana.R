@@ -4,18 +4,20 @@
 
 ## PRELIMINARIES
 rm(list = ls())
-source("~/Projects/R/Ranalysis/useful.R")
-source("~/Projects/R/Ranalysis/et_helper.R")
+setwd("/Users/ericang/Documents/Erica/Stanford/2013-Q2-Winter/Research/simpimpGIT/Data_analysis/")
+source("/Users/ericang/Documents/Erica/Stanford/2013-Q2-Winter/Research/simpimpGIT/Data_analysis/R_scripts/useful.R")
+source("/Users/ericang/Documents/Erica/Stanford/2013-Q2-Winter/Research/simpimpGIT/Data_analysis/R_scripts/et_helper.R")
 
-d <- read.csv("processed_data/simpimp processed.csv")
+d <- read.csv("processed_data/simpimp_processed.csv")
+head(d)
 
 ## minor odds and ends
-d <- subset(d,stimulus != "cross_white") # remove fixation cross
-d$stimulus <- to.n(d$stimulus) # convert to numeric
+d <- subset(d,stimulus != "blank") # remove blanks
+# got rid of (because the stimulus names are in characters): d$stimulus <- to.n(d$stimulus) # convert to numeric
 
 ################ PRELIMINARIES #################
 ## 1. Read in the orders and merge them with the data
-order <- read.csv("info/order1.csv")
+order <- read.csv("info/simpimp_order.csv")
 
 nrow(d) # first check number of rows
 plot(d$stimulus) # now check the stimulus ordering
@@ -25,6 +27,7 @@ d <- join(d, order) # use join rather than merge because it doesn't sort
 
 plot(d$stimulus) # check that nothing got messed up
 nrow(d) # check the number of rows again
+
 
 ## 2. Define the target ROIs (regions of interest)
 rois <- list()
@@ -39,9 +42,13 @@ d$roi <- roi.check(d,rois)
 
 # see how the distribution of ROIs looks
 qplot(roi,data=d)
+qplot(roi,data=d, facets=~subid)
+qplot(roi,data=d, facets=~targetPos)
+qplot(roi,data=d, facets=~target)
 
 # set up correctness
-d$correct <- d$roi == d$targ.pos
+d$correct <- d$roi == d$targetPos
+d <- subset(d,correct != "NA") ## Post-hoc elimination of trials other than test
 
 ## 3. Align trials to the onset of the critical word
 d <- rezero.trials(d)
@@ -50,7 +57,7 @@ d <- rezero.trials(d)
 ##    I like to do this when I don't have much data so that I'm not distracted 
 ##    by the variation in the data, but then relax the subsampling if I have more data.
 subsample.hz <- 10 # 10 hz is decent, eventually we should set to 30 or 60 hz
-d$t.crit.binned <- round(d$t.crit*subsample.hz)/subsample.hz # subsample step
+d$t.crit.binned <- round(d$t.crit*subsample.hz)/subsample.hz # subsample step ; EY: CHANGED THIS TO t.stim
 
 ################ ANALYSES #################
 # every analysis has two parts: an aggregation step and a plotting step
@@ -58,10 +65,10 @@ d$t.crit.binned <- round(d$t.crit*subsample.hz)/subsample.hz # subsample step
 # - and then plotting is making a picture relative to that aggregation
 
 ## 1. TRIAL TYPE ANALYSIS
-ms <- aggregate(correct ~ t.crit.binned + trial.type, d, mean)
+ms <- aggregate(correct ~ t.crit.binned + trialType, d, mean)
 
 qplot(t.crit.binned,correct,
-      colour=trial.type, 
+      colour=trialType, 
       geom="line",      
       data=ms) + 
   geom_hline(yintercept=.33,lty=2) + 
@@ -71,13 +78,13 @@ qplot(t.crit.binned,correct,
   scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
 
 ## add error bars with 95% CI
-mss <- aggregate(correct ~ t.crit.binned + trial.type + subid, d, mean)
-ms <- aggregate(correct ~ t.crit.binned + trial.type, mss, mean)
-ms$cih <- aggregate(correct ~ t.crit.binned + trial.type, mss, ci.high)$correct
-ms$cil <- aggregate(correct ~ t.crit.binned + trial.type, mss, ci.low)$correct
+mss <- aggregate(correct ~ t.crit.binned + trialType + subid, d, mean)
+ms <- aggregate(correct ~ t.crit.binned + trialType, mss, mean)
+ms$cih <- aggregate(correct ~ t.crit.binned + trialType, mss, ci.high)$correct
+ms$cil <- aggregate(correct ~ t.crit.binned + trialType, mss, ci.low)$correct
 
 qplot(t.crit.binned,correct,
-      colour=trial.type, 
+      colour=trialType, 
       geom="line",      
       data=ms) + 
   geom_pointrange(aes(ymin=correct-cil, ymax=correct+cih),
@@ -91,10 +98,10 @@ qplot(t.crit.binned,correct,
 ## 2. BY ITEM ANALYSIS
 # this won't look good until we have a lot of data because we are dividing our 
 # data in 6 parts
-ms <- aggregate(correct ~ t.crit.binned + trial.type + item, d, mean)
+ms <- aggregate(correct ~ t.crit.binned + trialType + target, d, mean)
 
 qplot(t.crit.binned,correct,
-      colour=trial.type, facets=~item,
+      colour=trialType, facets=~target,
       geom="line",
       data=ms) + 
   geom_hline(yintercept=.33,lty=2) + 
@@ -105,15 +112,15 @@ qplot(t.crit.binned,correct,
 ## 3. DWELL TIME IN WINDOW ANALYSIS
 # this will look good because we're averaging considerably
 window <- c(.5,2.5)
-mss <- aggregate(correct ~ trial.type + subid, 
+mss <- aggregate(correct ~ trialType + subid, 
                 subset(d,t.crit.binned > window[1] & t.crit.binned < window[2]), 
                        mean)
-ms <- aggregate(correct ~ trial.type, mss, mean)
-ms$cih <- aggregate(correct ~ trial.type, mss, ci.high)$correct
-ms$cil <- aggregate(correct ~ trial.type, mss, ci.low)$correct
+ms <- aggregate(correct ~ trialType, mss, mean)
+ms$cih <- aggregate(correct ~ trialType, mss, ci.high)$correct
+ms$cil <- aggregate(correct ~ trialType, mss, ci.low)$correct
 
-qplot(trial.type,correct,
-      fill=trial.type, stat="identity",
+qplot(trialType,correct,
+      fill=trialType, stat="identity",
       geom="bar",ylim=c(0,1),
       data=ms) + 
   ylab("Proportion correct looking") + 
