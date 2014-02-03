@@ -48,6 +48,7 @@ qplot(roi,data=d, facets=~target)
 
 # set up correctness
 d$correct <- d$roi == d$targetPos
+d$incorrect <- d$roi == d$distPos
 d <- subset(d,correct != "NA") ## Post-hoc elimination of trials other than test
 
 ## 3. Align trials to the onset of the critical word
@@ -56,8 +57,8 @@ d <- rezero.trials(d)
 ## 4. subsample the data so that you get smooth curves
 ##    I like to do this when I don't have much data so that I'm not distracted 
 ##    by the variation in the data, but then relax the subsampling if I have more data.
-subsample.hz <- 10 # 10 hz is decent, eventually we should set to 30 or 60 hz
-d$t.crit.binned <- round(d$t.crit*subsample.hz)/subsample.hz # subsample step ; EY: CHANGED THIS TO t.stim
+subsample.hz <- 5 # 10 hz is decent, eventually we should set to 30 or 60 hz
+d$t.crit.binned <- round(d$t.crit*subsample.hz)/subsample.hz # subsample step
 
 ################ ANALYSES #################
 # every analysis has two parts: an aggregation step and a plotting step
@@ -66,14 +67,76 @@ d$t.crit.binned <- round(d$t.crit*subsample.hz)/subsample.hz # subsample step ; 
 
 ## 1. TRIAL TYPE ANALYSIS
 ms <- aggregate(correct ~ t.crit.binned + trialType, d, mean)
+ms_i <- aggregate(incorrect ~ t.crit.binned + trialType, d, mean)
 
 qplot(t.crit.binned,correct,
       colour=trialType, 
       geom="line",      
       data=ms) + 
   geom_hline(yintercept=.33,lty=2) + 
+  geom_hline(yintercept=.5,lty=4) + 
   geom_vline(xintercept=0,lty=3) + 
   xlab("Time (s)") + ylab("Proportion correct looking") + 
+  scale_x_continuous(limits=c(-2,3),expand = c(0,0)) + 
+  scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
+
+## 1b. by participant
+ms <- aggregate(correct ~ t.crit.binned + trialType + subid, d, mean)
+
+qplot(t.crit.binned,correct,
+      colour=trialType, 
+      geom="point",      
+      data=ms) + 
+  facet_grid(.~ subid) + 
+  geom_hline(yintercept=.33,lty=2) + 
+  geom_hline(yintercept=.5,lty=4) + 
+  geom_vline(xintercept=0,lty=3) + 
+  geom_smooth() + 
+  xlab("Time (s)") + ylab("Proportion correct looking") + 
+  scale_x_continuous(limits=c(-2,3),expand = c(0,0)) + 
+  scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
+
+# try points
+subsample.hz <- 60 # 10 hz is decent, eventually we should set to 30 or 60 hz
+d$t.crit.binned <- round(d$t.crit*subsample.hz)/subsample.hz # subsample step
+ms <- aggregate(correct ~ t.crit.binned + trialType, d, mean)
+ms_i <- aggregate(incorrect ~ t.crit.binned + trialType, d, mean)
+
+qplot(t.crit.binned,correct,
+      colour=trialType, 
+      geom="point",      
+      data=ms) + 
+  geom_hline(yintercept=.33,lty=2) + 
+  geom_vline(xintercept=0,lty=3) + 
+  geom_smooth(method="loess",span=.5) +
+  xlab("Time (s)") + ylab("Proportion correct looking") + 
+  scale_x_continuous(limits=c(-2,3),expand = c(0,0)) + 
+  scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
+
+## 1c. first half vs. second half of trials
+ms <- aggregate(correct ~ t.crit.binned + trialType + order, d, mean)
+
+qplot(t.crit.binned,correct,
+      colour=trialType, 
+      geom="point",      
+      data=ms) + 
+  facet_grid(.~ order) + 
+  geom_hline(yintercept=.33,lty=2) + 
+  geom_hline(yintercept=.5,lty=4) + 
+  geom_vline(xintercept=0,lty=3) + 
+  geom_smooth() + 
+  xlab("Time (s)") + ylab("Proportion correct looking") + 
+  scale_x_continuous(limits=c(-2,3),expand = c(0,0)) + 
+  scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
+
+# incorrect
+qplot(t.crit.binned,incorrect,
+      colour=trialType, 
+      geom="line",      
+      data=ms_i) + 
+  geom_hline(yintercept=.33,lty=2) + 
+  geom_vline(xintercept=0,lty=3) + 
+  xlab("Time (s)") + ylab("Proportion incorrect looking") + 
   scale_x_continuous(limits=c(-2,3),expand = c(0,0)) + 
   scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
 
@@ -126,3 +189,29 @@ qplot(trialType,correct,
   ylab("Proportion correct looking") + 
   geom_hline(yintercept=.33,lty=2) + 
   geom_errorbar(aes(ymin=correct-cil,ymax=correct+cih,width=.2))
+
+# by subject
+qplot(trialType,correct,
+      fill=trialType, stat="identity",
+      geom="bar",ylim=c(0,1),
+      data=mss) +
+  facet_grid(. ~ subid) +
+  ylab("Proportion correct looking") + 
+  geom_hline(yintercept=.33,lty=2) 
+
+#incorrect looks?
+window <- c(.5,2.5)
+mss_i <- aggregate(incorrect ~ trialType + subid, 
+                 subset(d,t.crit.binned > window[1] & t.crit.binned < window[2]), 
+                 mean)
+ms_i <- aggregate(incorrect ~ trialType, mss_i, mean)
+ms_i$cih <- aggregate(incorrect ~ trialType, mss_i, ci.high)$incorrect
+ms_i$cil <- aggregate(incorrect ~ trialType, mss_i, ci.low)$incorrect
+
+qplot(trialType,incorrect,
+      fill=trialType, stat="identity",
+      geom="bar",ylim=c(0,1),
+      data=ms_i) + 
+  ylab("Proportion correct looking") + 
+  geom_hline(yintercept=.33,lty=2) + 
+  geom_errorbar(aes(ymin=incorrect-cil,ymax=incorrect+cih,width=.2))

@@ -49,7 +49,7 @@ qplot(x,y,geom="density2d",
 qplot(x,y, 
       facets = ~ subid,
       geom="density2d",
-      data=subset(d,stimulus=="140121-ey-simpleImp-list1.011"),
+      data=subset(d,stimulus=="blank"),
       xlim=c(0,1680),
       ylim=c(0,1050))
 

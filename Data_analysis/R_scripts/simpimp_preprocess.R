@@ -23,7 +23,7 @@ for (file.name in files) {
   print(file.name)
   
   ## these are the two functions that are most meaningful
-  d <- read.smi.idf(paste(raw.data.path,file.name,sep=""),header.rows=38)
+  d <- read.smi.idf(paste(raw.data.path,file.name,sep=""),header.rows=35)
   d <- preprocess.data(d)
   d$subid <- file.name
   
