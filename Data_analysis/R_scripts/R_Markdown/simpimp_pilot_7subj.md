@@ -308,20 +308,20 @@ head(order)
 ```
 
 ```
-##                        stimulus order character container    target
-## 1 140121-ey-simpleImp-list1.013   pre      elmo    friend     truck
-## 2 140121-ey-simpleImp-list1.016   pre      elmo  lunchbox     apple
-## 3 140121-ey-simpleImp-list1.018   pre    grover     chair       cat
-## 4 140121-ey-simpleImp-list1.021   pre    grover     house   bicycle
-## 5 140121-ey-simpleImp-list1.024   pre      elmo     plate    banana
-## 6 140121-ey-simpleImp-list1.026   pre      elmo     table teddybear
-##   trialType targetPos distPos targetOnset
-## 1   control         L       R       6.161
-## 2 inference         L       C       6.410
-## 3 inference         C       L       6.697
-## 4   control         R       L       6.287
-## 5 inference         R       L       6.111
-## 6   control         C       L       6.242
+##                        stimulus order order2 character container    target
+## 1 140121-ey-simpleImp-list1.013   pre     T1      elmo    friend     truck
+## 2 140121-ey-simpleImp-list1.016   pre     T1      elmo  lunchbox     apple
+## 3 140121-ey-simpleImp-list1.018   pre     T2    grover     chair       cat
+## 4 140121-ey-simpleImp-list1.021   pre     T2    grover     house   bicycle
+## 5 140121-ey-simpleImp-list1.024   pre     T3      elmo     plate    banana
+## 6 140121-ey-simpleImp-list1.026   pre     T3      elmo     table teddybear
+##   trialType targetPos distPos foilPos targetOnset
+## 1   control         L       R       C       6.161
+## 2 inference         L       C       R       6.410
+## 3 inference         C       L       R       6.697
+## 4   control         R       L       C       6.287
+## 5 inference         R       L       C       6.111
+## 6   control         C       L       R       6.242
 ```
 
 ```r
@@ -408,7 +408,18 @@ The graph above shows the distribution of the gazes by region. Just as we would 
 d$correct <- d$roi == d$targetPos
 ```
 
+
 Here we are saying that if the ROI fell in the region where the target item is positioned, then the column 'correct' will reflect this.
+
+
+
+```r
+# another way to organize by ROI's: set up three possible regions
+d$target <- ifelse(d$roi == d$targetPos, "1", "0")
+d$dist <- ifelse(d$roi == d$distPos, "1", "0")
+d$foil <- ifelse(d$roi == d$foilPos, "1", "0")
+```
+
 
 Now let's only keep the rows that we care about: for the ones we have info about whether they looked at the correct target or not.
 
@@ -420,7 +431,7 @@ d <- subset(d, correct != "NA")
 plot(d$stimulus)
 ```
 
-![plot of chunk unnamed-chunk-18](figure/unnamed-chunk-181.png) 
+![plot of chunk unnamed-chunk-19](figure/unnamed-chunk-191.png) 
 
 ```r
 nrow(d)
@@ -434,7 +445,7 @@ nrow(d)
 qplot(roi, data = d)
 ```
 
-![plot of chunk unnamed-chunk-18](figure/unnamed-chunk-182.png) 
+![plot of chunk unnamed-chunk-19](figure/unnamed-chunk-192.png) 
 
 
 
@@ -474,15 +485,15 @@ ms <- aggregate(correct ~ t.crit.binned + trialType, d, mean)
 qplot(t.crit.binned, correct, colour = trialType, geom = "line", data = ms) + 
     geom_hline(yintercept = 0.33, lty = 2) + geom_hline(yintercept = 0.5, lty = 4) + 
     geom_vline(xintercept = 0, lty = 3) + xlab("Time (s)") + ylab("Proportion correct looking") + 
-    scale_x_continuous(limits = c(-2, 3), expand = c(0, 0)) + scale_y_continuous(limits = c(0, 
+    scale_x_continuous(limits = c(-4, 3), expand = c(0, 0)) + scale_y_continuous(limits = c(0, 
     1), expand = c(0, 0))  # make the axes start at 0
 ```
 
 ```
-## Warning: Removed 113 rows containing missing values (geom_path).
+## Warning: Removed 73 rows containing missing values (geom_path).
 ```
 
-![plot of chunk unnamed-chunk-21](figure/unnamed-chunk-211.png) 
+![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-221.png) 
 
 ```r
 
@@ -496,29 +507,59 @@ qplot(t.crit.binned, correct, colour = trialType, geom = "line", data = ms) +
     geom_pointrange(aes(ymin = correct - cil, ymax = correct + cih), position = position_dodge(0.05)) + 
     geom_hline(yintercept = 0.33, lty = 2) + geom_hline(yintercept = 0.5, lty = 4) + 
     geom_vline(xintercept = 0, lty = 3) + xlab("Time (s)") + ylab("Proportion correct looking") + 
-    scale_x_continuous(limits = c(-2, 3), expand = c(0, 0)) + scale_y_continuous(limits = c(0, 
+    scale_x_continuous(limits = c(-4, 3), expand = c(0, 0)) + scale_y_continuous(limits = c(0, 
     1), expand = c(0, 0))  # make the axes start at 0
 ```
 
 ```
-## Warning: Removed 113 rows containing missing values (geom_path). Warning:
-## Removed 57 rows containing missing values (geom_segment). Warning: Removed
-## 57 rows containing missing values (geom_point). Warning: Removed 58 rows
-## containing missing values (geom_segment). Warning: Removed 58 rows
+## Warning: Removed 73 rows containing missing values (geom_path). Warning:
+## Removed 37 rows containing missing values (geom_segment). Warning: Removed
+## 37 rows containing missing values (geom_point). Warning: Removed 38 rows
+## containing missing values (geom_segment). Warning: Removed 38 rows
 ## containing missing values (geom_point).
 ```
 
-![plot of chunk unnamed-chunk-21](figure/unnamed-chunk-212.png) 
+![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-222.png) 
+
+
+Now let's try to make a graph that shows all three possible eye-gaze locations: target, distractor, and foil. 
+
 
 ```r
+melted = melt(d, id = c("t.crit.binned", "trialType"), measure = c("target", 
+    "dist", "foil"), value.name = "Looks", variable.name = "Region")
+melted$Looks = to.n(melted$Looks)
 
+subsample.hz <- 5  # 10 hz is decent, eventually we should set to 30 or 60 hz
+d$t.crit.binned <- round(d$t.crit * subsample.hz)/subsample.hz  # subsample step
+
+ms <- aggregate(Looks ~ Region + t.crit.binned + trialType, melted, mean)
+
+qplot(t.crit.binned, Looks, colour = trialType, linetype = Region, geom = "line", 
+    data = ms) + geom_hline(yintercept = 0.33, lty = 2) + geom_hline(yintercept = 0.5, 
+    lty = 4) + geom_vline(xintercept = 0, lty = 3) + xlab("Time (s)") + ylab("Proportion Looking") + 
+    scale_x_continuous(limits = c(-4, 3), expand = c(0, 0)) + scale_y_continuous(limits = c(0, 
+    1), expand = c(0, 0))  # make the axes start at 0
+```
+
+```
+## Warning: Removed 219 rows containing missing values (geom_path).
+```
+
+![plot of chunk unnamed-chunk-23](figure/unnamed-chunk-23.png) 
+
+
+Then we see how each partcipant performed:
+
+
+```r
 ## 1b. by participant
 ms <- aggregate(correct ~ t.crit.binned + trialType + subid, d, mean)
 
 qplot(t.crit.binned, correct, colour = trialType, geom = "point", data = ms) + 
-    facet_grid(. ~ subid) + geom_hline(yintercept = 0.33, lty = 2) + geom_hline(yintercept = 0.5, 
+    facet_wrap(~subid) + geom_hline(yintercept = 0.33, lty = 2) + geom_hline(yintercept = 0.5, 
     lty = 4) + geom_vline(xintercept = 0, lty = 3) + geom_smooth() + xlab("Time (s)") + 
-    ylab("Proportion correct looking") + scale_x_continuous(limits = c(-2, 3), 
+    ylab("Proportion correct looking") + scale_x_continuous(limits = c(-4, 3), 
     expand = c(0, 0)) + scale_y_continuous(limits = c(0, 1), expand = c(0, 0))  # make the axes start at 0
 ```
 
@@ -528,8 +569,8 @@ qplot(t.crit.binned, correct, colour = trialType, geom = "point", data = ms) +
 ```
 
 ```
-## Warning: Removed 52 rows containing missing values (stat_smooth). Warning:
-## Removed 55 rows containing missing values (stat_smooth).
+## Warning: Removed 17 rows containing missing values (stat_smooth). Warning:
+## Removed 17 rows containing missing values (stat_smooth).
 ```
 
 ```
@@ -538,8 +579,8 @@ qplot(t.crit.binned, correct, colour = trialType, geom = "point", data = ms) +
 ```
 
 ```
-## Warning: Removed 55 rows containing missing values (stat_smooth). Warning:
-## Removed 56 rows containing missing values (stat_smooth).
+## Warning: Removed 18 rows containing missing values (stat_smooth). Warning:
+## Removed 18 rows containing missing values (stat_smooth).
 ```
 
 ```
@@ -548,8 +589,8 @@ qplot(t.crit.binned, correct, colour = trialType, geom = "point", data = ms) +
 ```
 
 ```
-## Warning: Removed 54 rows containing missing values (stat_smooth). Warning:
-## Removed 56 rows containing missing values (stat_smooth).
+## Warning: Removed 17 rows containing missing values (stat_smooth). Warning:
+## Removed 17 rows containing missing values (stat_smooth).
 ```
 
 ```
@@ -558,8 +599,8 @@ qplot(t.crit.binned, correct, colour = trialType, geom = "point", data = ms) +
 ```
 
 ```
-## Warning: Removed 55 rows containing missing values (stat_smooth). Warning:
-## Removed 57 rows containing missing values (stat_smooth).
+## Warning: Removed 18 rows containing missing values (stat_smooth). Warning:
+## Removed 18 rows containing missing values (stat_smooth).
 ```
 
 ```
@@ -568,8 +609,8 @@ qplot(t.crit.binned, correct, colour = trialType, geom = "point", data = ms) +
 ```
 
 ```
-## Warning: Removed 56 rows containing missing values (stat_smooth). Warning:
-## Removed 55 rows containing missing values (stat_smooth).
+## Warning: Removed 18 rows containing missing values (stat_smooth). Warning:
+## Removed 17 rows containing missing values (stat_smooth).
 ```
 
 ```
@@ -578,8 +619,8 @@ qplot(t.crit.binned, correct, colour = trialType, geom = "point", data = ms) +
 ```
 
 ```
-## Warning: Removed 54 rows containing missing values (stat_smooth). Warning:
-## Removed 56 rows containing missing values (stat_smooth).
+## Warning: Removed 17 rows containing missing values (stat_smooth). Warning:
+## Removed 17 rows containing missing values (stat_smooth).
 ```
 
 ```
@@ -588,19 +629,24 @@ qplot(t.crit.binned, correct, colour = trialType, geom = "point", data = ms) +
 ```
 
 ```
-## Warning: Removed 55 rows containing missing values (stat_smooth). Warning:
-## Removed 57 rows containing missing values (stat_smooth). Warning: Removed
-## 107 rows containing missing values (geom_point). Warning: Removed 111 rows
-## containing missing values (geom_point). Warning: Removed 110 rows
-## containing missing values (geom_point). Warning: Removed 112 rows
-## containing missing values (geom_point). Warning: Removed 111 rows
-## containing missing values (geom_point). Warning: Removed 110 rows
-## containing missing values (geom_point). Warning: Removed 112 rows
+## Warning: Removed 18 rows containing missing values (stat_smooth). Warning:
+## Removed 18 rows containing missing values (stat_smooth). Warning: Removed
+## 34 rows containing missing values (geom_point). Warning: Removed 36 rows
+## containing missing values (geom_point). Warning: Removed 34 rows
+## containing missing values (geom_point). Warning: Removed 36 rows
+## containing missing values (geom_point). Warning: Removed 35 rows
+## containing missing values (geom_point). Warning: Removed 34 rows
+## containing missing values (geom_point). Warning: Removed 36 rows
 ## containing missing values (geom_point). Warning: Removed 2 rows containing
-## missing values (geom_path).
+## missing values (geom_path). Warning: Removed 12 rows containing missing
+## values (geom_path). Warning: Removed 9 rows containing missing values
+## (geom_path). Warning: Removed 3 rows containing missing values
+## (geom_path). Warning: Removed 7 rows containing missing values
+## (geom_path). Warning: Removed 9 rows containing missing values
+## (geom_path).
 ```
 
-![plot of chunk unnamed-chunk-21](figure/unnamed-chunk-213.png) 
+![plot of chunk unnamed-chunk-24](figure/unnamed-chunk-24.png) 
 
 
 About half of the participants have told me that:
@@ -627,8 +673,8 @@ qplot(t.crit.binned, correct, colour = trialType, geom = "point", data = ms) +
 ```
 
 ```
-## Warning: Removed 55 rows containing missing values (stat_smooth). Warning:
-## Removed 57 rows containing missing values (stat_smooth).
+## Warning: Removed 28 rows containing missing values (stat_smooth). Warning:
+## Removed 28 rows containing missing values (stat_smooth).
 ```
 
 ```
@@ -637,19 +683,98 @@ qplot(t.crit.binned, correct, colour = trialType, geom = "point", data = ms) +
 ```
 
 ```
-## Warning: Removed 56 rows containing missing values (stat_smooth). Warning:
-## Removed 57 rows containing missing values (stat_smooth). Warning: Removed
-## 112 rows containing missing values (geom_point). Warning: Removed 113 rows
+## Warning: Removed 28 rows containing missing values (stat_smooth). Warning:
+## Removed 28 rows containing missing values (stat_smooth). Warning: Removed
+## 56 rows containing missing values (geom_point). Warning: Removed 56 rows
 ## containing missing values (geom_point).
 ```
 
-![plot of chunk unnamed-chunk-22](figure/unnamed-chunk-22.png) 
-
-
-But it doesn't seem that bad in the data, actually (?)
-
+![plot of chunk unnamed-chunk-25](figure/unnamed-chunk-251.png) 
 
 ```r
+
+## 1d. each trial
+ms <- aggregate(correct ~ t.crit.binned + trialType + order2, d, mean)
+
+qplot(t.crit.binned, correct, colour = trialType, geom = "point", data = ms) + 
+    facet_grid(. ~ order2) + geom_hline(yintercept = 0.33, lty = 2) + geom_hline(yintercept = 0.5, 
+    lty = 4) + geom_vline(xintercept = 0, lty = 3) + geom_smooth() + xlab("Time (s)") + 
+    ylab("Proportion correct looking") + scale_x_continuous(limits = c(-3, 3), 
+    expand = c(0, 0)) + scale_y_continuous(limits = c(0, 1), expand = c(0, 0))  # make the axes start at 0
+```
+
+```
+## geom_smooth: method="auto" and size of largest group is <1000, so using
+## loess. Use 'method = x' to change the smoothing method.
+```
+
+```
+## Warning: Removed 22 rows containing missing values (stat_smooth). Warning:
+## Removed 23 rows containing missing values (stat_smooth).
+```
+
+```
+## geom_smooth: method="auto" and size of largest group is <1000, so using
+## loess. Use 'method = x' to change the smoothing method.
+```
+
+```
+## Warning: Removed 21 rows containing missing values (stat_smooth). Warning:
+## Removed 22 rows containing missing values (stat_smooth).
+```
+
+```
+## geom_smooth: method="auto" and size of largest group is <1000, so using
+## loess. Use 'method = x' to change the smoothing method.
+```
+
+```
+## Warning: Removed 23 rows containing missing values (stat_smooth). Warning:
+## Removed 22 rows containing missing values (stat_smooth).
+```
+
+```
+## geom_smooth: method="auto" and size of largest group is <1000, so using
+## loess. Use 'method = x' to change the smoothing method.
+```
+
+```
+## Warning: Removed 22 rows containing missing values (stat_smooth). Warning:
+## Removed 23 rows containing missing values (stat_smooth).
+```
+
+```
+## geom_smooth: method="auto" and size of largest group is <1000, so using
+## loess. Use 'method = x' to change the smoothing method.
+```
+
+```
+## Warning: Removed 21 rows containing missing values (stat_smooth). Warning:
+## Removed 22 rows containing missing values (stat_smooth).
+```
+
+```
+## geom_smooth: method="auto" and size of largest group is <1000, so using
+## loess. Use 'method = x' to change the smoothing method.
+```
+
+```
+## Warning: Removed 23 rows containing missing values (stat_smooth). Warning:
+## Removed 22 rows containing missing values (stat_smooth). Warning: Removed
+## 45 rows containing missing values (geom_point). Warning: Removed 43 rows
+## containing missing values (geom_point). Warning: Removed 45 rows
+## containing missing values (geom_point). Warning: Removed 45 rows
+## containing missing values (geom_point). Warning: Removed 43 rows
+## containing missing values (geom_point). Warning: Removed 45 rows
+## containing missing values (geom_point). Warning: Removed 4 rows containing
+## missing values (geom_path).
+```
+
+![plot of chunk unnamed-chunk-25](figure/unnamed-chunk-252.png) 
+
+```r
+
+
 subsample.hz <- 60
 d$t.crit.binned <- round(d$t.crit * subsample.hz)/subsample.hz  # subsample step
 ms <- aggregate(correct ~ t.crit.binned + trialType, d, mean)
@@ -668,7 +793,7 @@ qplot(t.crit.binned, correct, colour = trialType, geom = "point", data = ms) +
 ## Warning: Removed 672 rows containing missing values (geom_point).
 ```
 
-![plot of chunk unnamed-chunk-23](figure/unnamed-chunk-23.png) 
+![plot of chunk unnamed-chunk-25](figure/unnamed-chunk-253.png) 
 
 
 ***2. BY ITEM ANALYSIS***
@@ -686,21 +811,11 @@ qplot(t.crit.binned, correct, colour = trialType, facets = ~target, geom = "line
 ```
 
 ```
-## Warning: Removed 600 rows containing missing values (geom_path). Warning:
-## Removed 600 rows containing missing values (geom_path). Warning: Removed
-## 599 rows containing missing values (geom_path). Warning: Removed 599 rows
-## containing missing values (geom_path). Warning: Removed 600 rows
-## containing missing values (geom_path). Warning: Removed 600 rows
-## containing missing values (geom_path). Warning: Removed 600 rows
-## containing missing values (geom_path). Warning: Removed 601 rows
-## containing missing values (geom_path). Warning: Removed 600 rows
-## containing missing values (geom_path). Warning: Removed 600 rows
-## containing missing values (geom_path). Warning: Removed 599 rows
-## containing missing values (geom_path). Warning: Removed 598 rows
-## containing missing values (geom_path).
+## Warning: Removed 668 rows containing missing values (geom_path). Warning:
+## Removed 672 rows containing missing values (geom_path).
 ```
 
-![plot of chunk unnamed-chunk-24](figure/unnamed-chunk-24.png) 
+![plot of chunk unnamed-chunk-26](figure/unnamed-chunk-26.png) 
 
 
 ***3. DWELL TIME IN WINDOW ANALYSIS***
@@ -722,5 +837,5 @@ qplot(trialType, correct, fill = trialType, stat = "identity", geom = "bar",
     cil, ymax = correct + cih, width = 0.2))
 ```
 
-![plot of chunk unnamed-chunk-25](figure/unnamed-chunk-25.png) 
+![plot of chunk unnamed-chunk-27](figure/unnamed-chunk-27.png) 
 

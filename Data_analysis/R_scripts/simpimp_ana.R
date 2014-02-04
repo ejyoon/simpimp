@@ -18,6 +18,7 @@ d <- subset(d,stimulus != "blank") # remove blanks
 ################ PRELIMINARIES #################
 ## 1. Read in the orders and merge them with the data
 order <- read.csv("info/simpimp_order.csv")
+head(order)
 
 nrow(d) # first check number of rows
 plot(d$stimulus) # now check the stimulus ordering
@@ -49,10 +50,19 @@ qplot(roi,data=d, facets=~target)
 # set up correctness
 d$correct <- d$roi == d$targetPos
 d$incorrect <- d$roi == d$distPos
+
+d$target <- ifelse(d$roi == d$targetPos, "1", "0")
+d$dist <- ifelse(d$roi == d$distPos, "1", "0")
+d$foil <- ifelse(d$roi == d$foilPos, "1", "0")
+
+head(d)
 d <- subset(d,correct != "NA") ## Post-hoc elimination of trials other than test
+qplot(roi,data=d)
+
 
 ## 3. Align trials to the onset of the critical word
 d <- rezero.trials(d)
+
 
 ## 4. subsample the data so that you get smooth curves
 ##    I like to do this when I don't have much data so that I'm not distracted 
@@ -67,18 +77,43 @@ d$t.crit.binned <- round(d$t.crit*subsample.hz)/subsample.hz # subsample step
 
 ## 1. TRIAL TYPE ANALYSIS
 ms <- aggregate(correct ~ t.crit.binned + trialType, d, mean)
-ms_i <- aggregate(incorrect ~ t.crit.binned + trialType, d, mean)
 
-qplot(t.crit.binned,correct,
-      colour=trialType, 
+qplot(t.crit.binned, correct,
+      colour=trialType,
       geom="line",      
       data=ms) + 
   geom_hline(yintercept=.33,lty=2) + 
   geom_hline(yintercept=.5,lty=4) + 
   geom_vline(xintercept=0,lty=3) + 
   xlab("Time (s)") + ylab("Proportion correct looking") + 
-  scale_x_continuous(limits=c(-2,3),expand = c(0,0)) + 
+  scale_x_continuous(limits=c(-4,3),expand = c(0,0)) + 
   scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
+
+## 1aa. all regions (target, dist, foil)
+
+melted = melt(d, id=c("t.crit.binned", "trialType"), 
+              measure=c("target", "dist", "foil"),
+              value.name="Looks", variable.name="Region")
+melted$Looks = to.n(melted$Looks)
+
+subsample.hz <- 5 # 10 hz is decent, eventually we should set to 30 or 60 hz
+d$t.crit.binned <- round(d$t.crit*subsample.hz)/subsample.hz # subsample step
+
+ms <- aggregate(Looks ~ Region + t.crit.binned + trialType, melted, mean)
+
+qplot(t.crit.binned, Looks,
+      colour=trialType,
+      linetype=Region,
+      geom="line",      
+      data=ms) + 
+  geom_hline(yintercept=.33,lty=2) + 
+  geom_hline(yintercept=.5,lty=4) + 
+  geom_vline(xintercept=0,lty=3) + 
+  xlab("Time (s)") + ylab("Proportion Looking") + 
+  scale_x_continuous(limits=c(-4,3),expand = c(0,0)) + 
+  scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
+
+
 
 ## 1b. by participant
 ms <- aggregate(correct ~ t.crit.binned + trialType + subid, d, mean)
@@ -87,13 +122,13 @@ qplot(t.crit.binned,correct,
       colour=trialType, 
       geom="point",      
       data=ms) + 
-  facet_grid(.~ subid) + 
+  facet_wrap(~ subid) + 
   geom_hline(yintercept=.33,lty=2) + 
   geom_hline(yintercept=.5,lty=4) + 
   geom_vline(xintercept=0,lty=3) + 
   geom_smooth() + 
   xlab("Time (s)") + ylab("Proportion correct looking") + 
-  scale_x_continuous(limits=c(-2,3),expand = c(0,0)) + 
+  scale_x_continuous(limits=c(-4,4),expand = c(0,0)) + 
   scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
 
 # try points
@@ -110,23 +145,23 @@ qplot(t.crit.binned,correct,
   geom_vline(xintercept=0,lty=3) + 
   geom_smooth(method="loess",span=.5) +
   xlab("Time (s)") + ylab("Proportion correct looking") + 
-  scale_x_continuous(limits=c(-2,3),expand = c(0,0)) + 
+  scale_x_continuous(limits=c(-4,3),expand = c(0,0)) + 
   scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
 
-## 1c. first half vs. second half of trials
-ms <- aggregate(correct ~ t.crit.binned + trialType + order, d, mean)
+## 1c. trial order
+ms <- aggregate(correct ~ t.crit.binned + trialType + order2, d, mean)
 
 qplot(t.crit.binned,correct,
       colour=trialType, 
       geom="point",      
       data=ms) + 
-  facet_grid(.~ order) + 
+  facet_grid(.~ order2) + 
   geom_hline(yintercept=.33,lty=2) + 
   geom_hline(yintercept=.5,lty=4) + 
   geom_vline(xintercept=0,lty=3) + 
   geom_smooth() + 
   xlab("Time (s)") + ylab("Proportion correct looking") + 
-  scale_x_continuous(limits=c(-2,3),expand = c(0,0)) + 
+  scale_x_continuous(limits=c(-3,3),expand = c(0,0)) + 
   scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
 
 # incorrect
@@ -157,6 +192,20 @@ qplot(t.crit.binned,correct,
   xlab("Time (s)") + ylab("Proportion correct looking") + 
   scale_x_continuous(limits=c(-2,3),expand = c(0,0)) + 
   scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
+
+## 1d. looking at target, distractor, and foil altogether
+melted = melt(d, id=c("targetOnset"),
+  measure=c("targetPos","distPos", "foilPos"),
+  value.name="Looks",variable.name="Region")
+head(melted)
+melted$Looks = to.n(melted$Looks)
+agr <- aggregate(Looks ~ Region + TimePlot + Quantifier, melted, mean)
+
+ggplot(agr, aes(x=TimePlot,y=Looks,linetype=Region,color=Quantifier)) +
+  geom_line(size=2) +
+  geom_vline(xintercept=462, color="black", size=I(1),show_guide=FALSE)
+
+
 
 ## 2. BY ITEM ANALYSIS
 # this won't look good until we have a lot of data because we are dividing our 
