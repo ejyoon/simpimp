@@ -9,9 +9,15 @@ source("/Users/ericang/Documents/Erica/Stanford/2013-Q2-Winter/Research/simpimpG
 source("/Users/ericang/Documents/Erica/Stanford/2013-Q2-Winter/Research/simpimpGIT/Data_analysis/R_scripts/et_helper.R")
 
 d <- read.csv("processed_data/simpimp_processed.csv")
+head(d)
 
 ## THINGS TO CHECK
 ## 1. distribution of data 
+
+# first, make those x and y's that fell on (0, 1050) as weird default be treated as NA's.
+d$x[d$y== "1050" & d$x=="0"] <- NA
+d$y[d$y== "1050"] <- NA
+head(d)
 
 # do histograms of the data for x and y coordinates
 hist(d$x)
@@ -67,12 +73,12 @@ qplot(x,y,
       ylim=c(0,1050)) 
 
 ## 3. Check for missing data
-# how many NAs are there in the dataset?
 
+
+# how many NAs are there in the dataset?
 sum(is.na(d$x))
 
 # how about for each participant?
 # HINT: use na.action="na.pass" to pass NAs through aggregate
-
 aggregate(x ~ subid, d, function(y) {return(sum(is.na(y)))},
           na.action="na.pass")

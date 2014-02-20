@@ -194,17 +194,43 @@ qplot(t.crit.binned,correct,
   scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
 
 ## 1d. looking at target, distractor, and foil altogether
-melted = melt(d, id=c("targetOnset"),
-  measure=c("targetPos","distPos", "foilPos"),
-  value.name="Looks",variable.name="Region")
-head(melted)
+melted = melt(d, id=c("t.crit.binned", "trialType"), 
+              measure=c("target", "dist", "foil"),
+              value.name="Looks", variable.name="Region")
 melted$Looks = to.n(melted$Looks)
-agr <- aggregate(Looks ~ Region + TimePlot + Quantifier, melted, mean)
 
-ggplot(agr, aes(x=TimePlot,y=Looks,linetype=Region,color=Quantifier)) +
-  geom_line(size=2) +
-  geom_vline(xintercept=462, color="black", size=I(1),show_guide=FALSE)
+subsample.hz <- 10 # 10 hz is decent, eventually we should set to 30 or 60 hz
+d$t.crit.binned <- round(d$t.crit*subsample.hz)/subsample.hz # subsample step
 
+ms <- aggregate(Looks ~ Region + t.crit.binned + trialType, melted, mean)
+
+qplot(t.crit.binned, Looks,
+      colour=trialType,
+      linetype=Region,
+      geom="line",      
+      data=ms) + 
+  geom_hline(yintercept=.33,lty=2) + 
+  geom_hline(yintercept=.5,lty=4) + 
+  geom_vline(xintercept=0,lty=3) + 
+  xlab("Time (s)") + ylab("Proportion Looking") + 
+  scale_x_continuous(limits=c(-4,3),expand = c(0,0)) + 
+  scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
+
+## 1e. target positions
+ms <- aggregate(correct ~ t.crit.binned + trialType + targetPos, d, mean)
+
+qplot(t.crit.binned,correct,
+      colour=trialType, 
+      geom="point", 
+      data=ms) + 
+  facet_grid(.~ targetPos) + 
+  geom_hline(yintercept=.33,lty=2) + 
+  geom_hline(yintercept=.5,lty=4) + 
+  geom_vline(xintercept=0,lty=3) + 
+  geom_smooth() + 
+  xlab("Time (s)") + ylab("Proportion correct looking") + 
+  scale_x_continuous(limits=c(-3,3),expand = c(0,0)) + 
+  scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
 
 
 ## 2. BY ITEM ANALYSIS
