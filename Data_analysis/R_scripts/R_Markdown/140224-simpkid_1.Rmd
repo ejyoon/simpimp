@@ -156,7 +156,7 @@ head(trial.nas)
 #calculate the proportion of non-NA's over all 
 trial.nas$prop <-trial.nas$false / (trial.nas$true + trial.nas$false) 
 summary(trial.nas)
-reject.trials <- trial.nas[trial.nas$prop < .68,]
+reject.trials <- trial.nas[trial.nas$prop < .5,]
 
 # add a column in data that combines subid and stim (trial)
 d$subtrial <- paste(d$subid,"_",d$stimulus,sep="")
@@ -172,11 +172,15 @@ subject.nas <- ddply(d,c("subid", "stimulus"),"nrow")
 subject.nas2 <- ddply(subject.nas, "subid", "nrow")
 print(subject.nas2)
 ## reject subjects that have less than 70% of the trials remaining (11 out of 16)
-reject.subjects <- subject.nas2[subject.nas2$nrow < 11,]
+reject.subjects <- subject.nas2[subject.nas2$nrow < 8,]
 print(reject.subjects)
 for(i in reject.subjects$subid) {
 	d <- d[d$subid !=i,]
 }
+
+subj <- ddply(d, c("subid", "age_group"), "nrow")
+subj2 <- ddply(subj, "age_group", "nrow")
+subj2
 ```
 
 NOTE: weirdly, the subject that I thought did great(140220-02) was dropped (only 10 good trials) maybe worth changing the criteria at this point?
