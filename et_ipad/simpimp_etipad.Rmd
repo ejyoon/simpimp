@@ -1,17 +1,42 @@
 ---
-title: "simpimp ana - eye-tracking and iPad data"
+title: "simpimp - eye-tracking and iPad ana"
 author: "Erica Yoon"
 date: "February 4, 2016"
-output: html_document
+output:
+  html_document:
+    highlight: tango
+    theme: spacelab
 ---
+
+```{r setup, include=FALSE}
+library(knitr)
+options(scipen = 1, digits = 3)
+opts_chunk$set(message=FALSE, warning=FALSE, cache=TRUE)
+```
+
+Load required libraries.
+```{r libraries, cache=FALSE}
+rm(list = ls())
+library(ggplot2)
+library(lme4)
+library(dplyr)
+library(tidyr)
+library(langcog) # Langcog Lab useful R functions -- www.github.com/langcog/langcog
+theme_set(theme_bw())
+```
+
 
 ```{r prep, message=FALSE}
 rm(list = ls())
 setwd("/Users/ericang/Documents/Research/simpimp_GIT/")
-source("useful.R")
+# source("useful.R")
 source("et_helper.R")
+library(dplyr)
 library(ggplot2)
 library(data.table)
+library(langcog)
+library(bootstrap)
+theme_set(theme_bw())
 
 d_et <- fread("/Users/ericang/Documents/Research/simpimp_GIT/simpimp_et_all.csv")
 head(d_et)
@@ -20,34 +45,35 @@ d_ip$expt <- "ipad"
 head(d_ip)
 ```
 
+Helper. 
+
+```{r}
+## for bootstrapping 95% confidence intervals
+theta <- function(x,xdata,na.rm=T) {mean(xdata[x],na.rm=na.rm)}
+ci.low <- function(x,na.rm=T) {
+  mean(x,na.rm=na.rm) - quantile(bootstrap(1:length(x),1000,theta,x,na.rm=na.rm)$thetastar,.025,na.rm=na.rm)}
+ci.high <- function(x,na.rm=T) {
+  quantile(bootstrap(1:length(x),1000,theta,x,na.rm=na.rm)$thetastar,.975,na.rm=na.rm) - mean(x,na.rm=na.rm)}
+```
+
 # look at distribution of rt for ipad data
 
 ```{r ipad_rt_hist}
 # ipad rt
-ggplot(subset(d_ip, trial_type != "practice"), aes(x=rt, fill=trial_type)) +
-    geom_histogram(binwidth=200, position="dodge") +
-    geom_vline(aes(xintercept=mean(rt, na.rm=T)),   # Ignore NA values for mean
-               color="red", linetype="dashed", size=1) +
-    geom_vline(aes(xintercept=mean(d_ip$rt) + 2*sd(d_ip$rt, na.rm=TRUE)),   # Ignore NA values for mean
-               color="red", linetype="dashed", size=1) +
-    geom_vline(aes(xintercept=mean(d_ip$rt) + 3*sd(d_ip$rt, na.rm=TRUE)),   # Ignore NA values for mean
-               color="red", linetype="dashed", size=1) +
-    facet_grid(item_num~.) +
-  ggtitle("ipad RT: accurate + inaccurate responses")
 
-# only accurate
-ggplot(subset(d_ip, trial_type != "practice" & correct == TRUE), aes(x=rt, fill=trial_type)) +
-    geom_histogram(binwidth=200, position="dodge") +
-    geom_vline(aes(xintercept=mean(rt, na.rm=T)),   # Ignore NA values for mean
-               color="red", linetype="dashed", size=1) +
-    geom_vline(aes(xintercept=mean(d_ip$rt) + 2*sd(d_ip$rt, na.rm=TRUE)),   # Ignore NA values for mean
-               color="red", linetype="dashed", size=1) +
-    geom_vline(aes(xintercept=mean(d_ip$rt) + 3*sd(d_ip$rt, na.rm=TRUE)),   # Ignore NA values for mean
-               color="red", linetype="dashed", size=1) +
-    facet_grid(item_num~.) +
-  ggtitle("ipad RT: only accurate responses")
+d_ip <- filter(d_ip, !(trial_type == "control_double" & item_num=="1vs1"))
 
-
+ggplot(filter(d_ip, trial_type != "practice", correct), 
+       aes(x=log(rt), y=..density.., fill=trial_type)) +
+  geom_histogram(position="dodge") +
+  geom_vline(aes(xintercept=mean(log(rt), na.rm=T)),   # Ignore NA values for mean
+             color="red", linetype="dashed", size=1) +
+  geom_vline(aes(xintercept=mean(log(rt)) + 3*sd(log(rt), na.rm=TRUE)),   
+             color="red", linetype="dashed", size=1) +
+  geom_vline(aes(xintercept=mean(log(rt)) - 3*sd(log(rt), na.rm=TRUE)),   
+             color="red", linetype="dashed", size=1) +
+  facet_grid(item_num~trial_type) +
+  ggtitle("ipad RT: accurate responses")
 ```
 
 Similar spread for control and inference trials, across different numbers of items.
@@ -56,9 +82,31 @@ Max is within 15 seconds. Cut 3 SD from the mean:
 
 ```{r}
 # remove outliers, by rt
-dropcrit <- mean(d_ip$rt) + 3*sd(d_ip$rt, na.rm=TRUE)
+top_bound <- mean(log(d_ip$rt)) + 3*sd(log(d_ip$rt))
+bottom_bound <- mean(log(d_ip$rt)) - 3*sd(log(d_ip$rt))
+
 d_ip <- d_ip %>%
-  filter(rt < dropcrit)
+  filter(log(rt) < top_bound, 
+         log(rt) > bottom_bound)
+```
+
+Summary plot.
+
+```{r}
+ip_rt_ms <- d_ip %>%
+  filter(trial_type != "practice", age_group > 2, age_group < 6) %>%
+  group_by(trial_type, item_num, age_group, subid) %>%
+  summarise(rt = mean(rt)) %>%
+  summarise(rt = mean(rt),
+            cih = ci.high(rt),
+            cil = ci.low(rt))
+  
+ggplot(ip_rt_ms, aes(x = age_group, y = rt, group = item_num, col = item_num)) + 
+  geom_line() + 
+  geom_pointrange(aes(ymin = rt - cil, ymax = rt + cih), 
+                  position = position_dodge(width = .1)) + 
+  facet_grid(. ~ trial_type)
+  
 ```
 
 # look at distribution of rt for eye-tracking data
@@ -66,48 +114,53 @@ d_ip <- d_ip %>%
 ```{r et_rt_hist}
 # et rt
 # information on when the first switch was made (distractor -> target or target -> distractor, after word onset)
-d_et1 <- d_et %>%
-  filter(t.crit > 0) %>%
-  filter((targetAtOnset == FALSE & correct == TRUE) | (targetAtOnset == TRUE & correct == FALSE)) %>%
-  group_by(subid, stimulus) %>%
-  summarize(switch_t = min(t.crit))
-d_et <- inner_join(d_et, d_et1)
+et_rts <- d_et %>%
+  filter(t.crit > 0, targetAtOnset == FALSE & correct == TRUE) %>%
+  group_by(subid, expt, order, trial_type, age_group, stimulus) %>%
+  summarize(rt = min(t.crit))
+# d_et <- inner_join(d_et, d_et1)
 
 # distribution of rt
-ggplot(subset(d_et, targetAtOnset == FALSE), aes(x=switch_t, fill=trial_type)) +
-    geom_histogram(binwidth=0.05, position="dodge") +
-    geom_vline(aes(xintercept=mean(switch_t, na.rm=T)),   # Ignore NA values for mean
-               color="red", linetype="dashed", size=1) +
-    geom_vline(aes(xintercept=mean(switch_t) + 2*sd(switch_t, na.rm=TRUE)),   # Ignore NA values for mean
-               color="red", linetype="dashed", size=1) +
-    geom_vline(aes(xintercept=mean(switch_t) + 3*sd(switch_t, na.rm=TRUE)),   # Ignore NA values for mean
-               color="red", linetype="dashed", size=1) +
-      facet_grid(expt~.) +
-  ggtitle("RT for switching from distractor to target")
+ggplot(et_rts, aes(x=log(rt), y = ..density.., fill=trial_type)) +
+  geom_histogram(position="dodge") +
+  facet_grid(expt~trial_type) + 
+  geom_vline(aes(xintercept=mean(log(rt))),   
+             color="red", linetype="dashed", size=1) +
+  geom_vline(aes(xintercept=mean(log(rt)) + 3*sd(log(rt))),   
+             color="red", linetype="dashed", size=1) + 
+  geom_vline(aes(xintercept=mean(log(rt)) - 3*sd(log(rt))),   
+             color="red", linetype="dashed", size=1) 
 ```
 
-Very interestingly, rt's much less spread out for 3-vs-1 experiment, control-double and inference trials. 
-(And a hint of difference between control-single trials in 2-vs-1 vs. 3-vs-1 expt, but not so much?)
-
-Compare target-to-distractor vs. distractor-to-target, to see if there's any speed-accuracy tradeoff?
+Clip small number of outliers.
 
 ```{r}
-# distribution of rt
-ggplot(d_et, aes(x=switch_t, fill=targetAtOnset)) +
-    geom_histogram(binwidth=0.05, position="dodge") +
-    geom_vline(aes(xintercept=mean(switch_t, na.rm=T)),   # Ignore NA values for mean
-               color="red", linetype="dashed", size=1) +
-    geom_vline(aes(xintercept=mean(switch_t) + 2*sd(switch_t, na.rm=TRUE)),   # Ignore NA values for mean
-               color="red", linetype="dashed", size=1) +
-    geom_vline(aes(xintercept=mean(switch_t) + 3*sd(switch_t, na.rm=TRUE)),   # Ignore NA values for mean
-               color="red", linetype="dashed", size=1) +
-      facet_grid(expt~trial_type) +
-    ggtitle("RT for switching")
-  
+# remove outliers, by rt
+top_bound <- mean(log(et_rts$rt)) + 3*sd(log(et_rts$rt))
+bottom_bound <- mean(log(et_rts$rt)) - 3*sd(log(et_rts$rt))
 
+et_rts <- et_rts %>%
+  filter(log(rt) < top_bound, 
+         log(rt) > bottom_bound)
 ```
 
-The same pattern shows up, where the control-single looks similar across the 2 expts but control-double and inference have very quick reaction times. 
+Summary plot.
+
+```{r}
+et_rt_ms <- et_rts %>%
+  group_by(trial_type, expt, age_group, subid) %>%
+  summarise(rt = mean(rt)) %>%
+  summarise(rt = mean(rt), 
+            cih = ci.high(rt),
+            cil = ci.low(rt))
+  
+ggplot(et_rt_ms, aes(x = age_group, y = rt, group = expt, col = expt)) + 
+  geom_line() + 
+  geom_pointrange(aes(ymin = rt - cil, ymax = rt + cih), 
+                  position = position_dodge(width = .1)) + 
+  facet_grid(. ~ trial_type)
+  
+```
 
 # eye-tracking
 
