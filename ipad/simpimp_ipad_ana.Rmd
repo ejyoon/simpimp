@@ -1,0 +1,67 @@
+Simpimp: Eye-tracking ana
+========================================================
+
+# LOAD
+
+```{r}
+rm(list = ls())
+setwd("/Users/ericang/Documents/Research/simpimp_GIT/")
+source("useful.R")
+source("et_helper.R")
+library(ggplot2)
+library(reshape)
+library(data.table)
+
+d <- fread("simpimp_ipad_data.csv")
+d <- as.data.frame(d)
+
+# indicate age group
+log <- read.csv("simpimp_log.csv")
+detach(package:dplyr)
+library(plyr)
+d <- join(d, log)
+
+detach(package:plyr)
+library(dplyr)
+
+dropcrit <- mean(d$rt) + 2*sd(d$rt, na.rm=TRUE)
+
+d <- d %>%
+  select(subid, age_group, trial_type, item_num, correct, rt) %>%
+  mutate(subid = as.factor(subid)) %>%
+  mutate(trial_type = as.factor(trial_type)) %>%
+  mutate(correct = as.factor(correct)) %>%
+  mutate(age_group = as.factor(age_group)) %>%
+  filter(rt < dropcrit)
+
+levels(d$correct) <- c(0, 1) 
+d$correct <- as.numeric(as.character(d$correct))
+
+```
+
+# ANALYSES
+
+```{r}
+mss <- d %>%
+  filter(age_group != "2" & age_group != "6") %>%
+  group_by(age_group, trial_type, item_num, subid) %>%
+  summarize(correct = mean(correct, na.rm=TRUE),
+            rt = mean(rt, na.rm=TRUE))
+
+# accuracy
+ms <- aggregate(correct ~ age_group + trial_type + item_num, mss, mean)
+ms$cih <- aggregate(correct ~ age_group + trial_type + item_num, mss, ci.high)$correct
+ms$cil <- aggregate(correct ~ age_group + trial_type + item_num, mss, ci.low)$correct
+
+
+ggplot(ms, 
+       aes(fill=item_num, y=correct, x=age_group)) +
+  geom_bar(position="dodge", stat="identity") + 
+  ylab("accuracy rate") + 
+  facet_grid(.~trial_type) +
+  guides(fill=guide_legend(title=NULL)) +
+  geom_hline(yintercept=.50,lty=4) + 
+  geom_errorbar(aes(ymin=correct-cil,ymax=correct+cih,width=.2),position=position_dodge(width = 0.90))
+
+```
+
