@@ -1,6 +1,6 @@
 ---
 title: "simpimp - eye-tracking and iPad ana"
-author: "Erica Yoon"
+author: "Erica Yoon, Mike Frank"
 date: "February 4, 2016"
 output:
   html_document:
@@ -8,17 +8,11 @@ output:
     theme: spacelab
 ---
 
-```{r setup, include=FALSE}
-library(knitr)
-options(scipen = 1, digits = 3)
-opts_chunk$set(message=FALSE, warning=FALSE, cache=TRUE)
-```
-
 Load required libraries.
 ```{r libraries, cache=FALSE}
 rm(list = ls())
 library(ggplot2)
-library(lme4)
+library(data.table)
 library(dplyr)
 library(tidyr)
 library(langcog) # Langcog Lab useful R functions -- www.github.com/langcog/langcog
@@ -26,61 +20,50 @@ theme_set(theme_bw())
 ```
 
 
-```{r prep, message=FALSE}
-rm(list = ls())
-setwd("/Users/ericang/Documents/Research/simpimp_GIT/")
-# source("useful.R")
-source("et_helper.R")
-library(dplyr)
-library(ggplot2)
-library(data.table)
-library(langcog)
-library(bootstrap)
-theme_set(theme_bw())
-
-d_et <- fread("/Users/ericang/Documents/Research/simpimp_GIT/simpimp_et_all.csv")
+```{r data, message=FALSE}
+d_et <- rbind(
+  fread("../eye-tracking/processed_data/simpimp_et_age2.csv", data.table=FALSE),
+  fread("../eye-tracking/processed_data/simpimp_et_age3.csv", data.table=FALSE),
+  fread("../eye-tracking/processed_data/simpimp_et_age4.csv", data.table=FALSE),
+  fread("../eye-tracking/processed_data/simpimp_et_age5.csv", data.table=FALSE),
+  fread("../eye-tracking/processed_data/simpimp_et_adult.csv", data.table=FALSE)) %>%
+    mutate(trial_type = factor(trial_type, labels = c("control-double", "control-single", "inference")))
 head(d_et)
-d_ip <- fread("/Users/ericang/Documents/Research/simpimp_GIT/simpimp_ipad_short.csv")
-d_ip$expt <- "ipad"
+
+d_ip <- fread("../ipad/simpimp_ipad_short.csv", data.table=FALSE) %>%
+  mutate(expt = "ipad") %>%
+  filter(trial_type != "practice",
+         age_group != "2",
+         age_group != "6") %>%
+  mutate(
+    subid = as.factor(subid),
+    age_group = as.factor(age_group), 
+    item_num = as.factor(item_num),
+    item_rel = as.factor(item_num))
+levels(d_ip$item_rel) <- c("fewer", "fewer", "more", "more")
 head(d_ip)
 ```
 
-Helper. 
+ipad rt.
 
-```{r}
-## for bootstrapping 95% confidence intervals
-theta <- function(x,xdata,na.rm=T) {mean(xdata[x],na.rm=na.rm)}
-ci.low <- function(x,na.rm=T) {
-  mean(x,na.rm=na.rm) - quantile(bootstrap(1:length(x),1000,theta,x,na.rm=na.rm)$thetastar,.025,na.rm=na.rm)}
-ci.high <- function(x,na.rm=T) {
-  quantile(bootstrap(1:length(x),1000,theta,x,na.rm=na.rm)$thetastar,.975,na.rm=na.rm) - mean(x,na.rm=na.rm)}
-```
-
-# look at distribution of rt for ipad data
-
-```{r ipad_rt_hist}
+```{r ipad_rt_hist, fig.width = 10, fig.height = 4}
 # ipad rt
-
-d_ip <- filter(d_ip, !(trial_type == "control_double" & item_num=="1vs1"))
-
-ggplot(filter(d_ip, trial_type != "practice", correct), 
+ggplot(filter(d_ip, correct=="1"), 
        aes(x=log(rt), y=..density.., fill=trial_type)) +
   geom_histogram(position="dodge") +
-  geom_vline(aes(xintercept=mean(log(rt), na.rm=T)),   # Ignore NA values for mean
+  geom_vline(aes(xintercept=mean(log(rt))),   # Ignore NA values for mean
              color="red", linetype="dashed", size=1) +
-  geom_vline(aes(xintercept=mean(log(rt)) + 3*sd(log(rt), na.rm=TRUE)),   
+  geom_vline(aes(xintercept=mean(log(rt)) + 3*sd(log(rt))),   
              color="red", linetype="dashed", size=1) +
-  geom_vline(aes(xintercept=mean(log(rt)) - 3*sd(log(rt), na.rm=TRUE)),   
+  geom_vline(aes(xintercept=mean(log(rt)) - 3*sd(log(rt))),   
              color="red", linetype="dashed", size=1) +
-  facet_grid(item_num~trial_type) +
+  facet_grid(item_rel~trial_type) +
   ggtitle("ipad RT: accurate responses")
 ```
 
-Similar spread for control and inference trials, across different numbers of items.
+clip outliers.
 
-Max is within 15 seconds. Cut 3 SD from the mean:
-
-```{r}
+```{r ipad_clip_rt, fig.width = 10, fig.height = 4}
 # remove outliers, by rt
 top_bound <- mean(log(d_ip$rt)) + 3*sd(log(d_ip$rt))
 bottom_bound <- mean(log(d_ip$rt)) - 3*sd(log(d_ip$rt))
@@ -92,33 +75,29 @@ d_ip <- d_ip %>%
 
 Summary plot.
 
-```{r}
+```{r ipad_rt_ana, fig.width = 10, fig.height = 4}
 ip_rt_ms <- d_ip %>%
-  filter(trial_type != "practice", age_group > 2, age_group < 6) %>%
   group_by(trial_type, item_num, age_group, subid) %>%
   summarise(rt = mean(rt)) %>%
-  summarise(rt = mean(rt),
-            cih = ci.high(rt),
-            cil = ci.low(rt))
-  
+  group_by(trial_type, item_num, age_group) %>%
+  multi_boot_standard(column = "rt") %>%
+  mutate(rt = mean)
+
 ggplot(ip_rt_ms, aes(x = age_group, y = rt, group = item_num, col = item_num)) + 
   geom_line() + 
-  geom_pointrange(aes(ymin = rt - cil, ymax = rt + cih), 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
                   position = position_dodge(width = .1)) + 
   facet_grid(. ~ trial_type)
   
 ```
 
-# look at distribution of rt for eye-tracking data
+eye-tracking rt.
 
-```{r et_rt_hist}
-# et rt
-# information on when the first switch was made (distractor -> target or target -> distractor, after word onset)
+```{r et_rt_hist, fig.width = 10, fig.height = 4}
 et_rts <- d_et %>%
   filter(t.crit > 0, targetAtOnset == FALSE & correct == TRUE) %>%
   group_by(subid, expt, order, trial_type, age_group, stimulus) %>%
   summarize(rt = min(t.crit))
-# d_et <- inner_join(d_et, d_et1)
 
 # distribution of rt
 ggplot(et_rts, aes(x=log(rt), y = ..density.., fill=trial_type)) +
@@ -129,10 +108,12 @@ ggplot(et_rts, aes(x=log(rt), y = ..density.., fill=trial_type)) +
   geom_vline(aes(xintercept=mean(log(rt)) + 3*sd(log(rt))),   
              color="red", linetype="dashed", size=1) + 
   geom_vline(aes(xintercept=mean(log(rt)) - 3*sd(log(rt))),   
-             color="red", linetype="dashed", size=1) 
+             color="red", linetype="dashed", size=1) +
+  ggtitle("eye-tracking rt")
+
 ```
 
-Clip small number of outliers.
+Clip outliers.
 
 ```{r}
 # remove outliers, by rt
@@ -146,46 +127,73 @@ et_rts <- et_rts %>%
 
 Summary plot.
 
-```{r}
+```{r, fig.width = 10, fig.height = 4}
 et_rt_ms <- et_rts %>%
   group_by(trial_type, expt, age_group, subid) %>%
   summarise(rt = mean(rt)) %>%
-  summarise(rt = mean(rt), 
-            cih = ci.high(rt),
-            cil = ci.low(rt))
-  
+  group_by(trial_type, expt, age_group) %>%
+  multi_boot_standard(column = "rt") %>%
+  mutate(rt = mean)
+
+ggplot(et_rt_ms, aes(x = age_group, y = rt, group = trial_type, col = trial_type)) + 
+  geom_line() + 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
+                  position = position_dodge(width = .1)) + 
+  facet_grid(. ~ expt) +
+  scale_colour_discrete(labels = c("control-double", "control-single", "inference"))
+
 ggplot(et_rt_ms, aes(x = age_group, y = rt, group = expt, col = expt)) + 
   geom_line() + 
-  geom_pointrange(aes(ymin = rt - cil, ymax = rt + cih), 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
                   position = position_dodge(width = .1)) + 
-  facet_grid(. ~ trial_type)
-  
+  facet_grid(. ~ trial_type) +
+  scale_colour_discrete(labels = c("2-vs-1", "3-vs-1")) +
+  ggtitle("eye-tracking rt")
+
+
 ```
 
-# eye-tracking
+et vs. ipad rt.
+
+```{r}
+et_rt_ms <- et_rt_ms %>%
+  ungroup() %>%
+  mutate(item_num = substring(expt, 4),
+         trial_type = factor(trial_type, labels = c("control-double", "control-single", "inference"))) %>%
+  select(age_group, trial_type, item_num, rt, ci_lower, ci_upper) %>%
+  mutate(expt = "eye-tracking")
+
+ip_rt_ms <- ip_rt_ms %>%
+  ungroup() %>%
+  select(age_group, trial_type, item_num, rt, ci_lower, ci_upper) %>%
+  mutate(expt = "iPad",
+         trial_type = factor(trial_type, labels = c("control-double", "control-single", "inference"))) %>%
+  mutate(rt = rt/1000,
+         ci_lower = ci_lower/1000,
+         ci_upper = ci_upper/1000)
+
+rt_ms <- rbind(et_rt_ms, ip_rt_ms)
+
+ggplot(subset(rt_ms, trial_type != "control-single" & age_group != "2" & age_group != "adult"), 
+       aes(x = age_group, y = rt, group = trial_type, col = trial_type)) + 
+  geom_line() + 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
+                  position = position_dodge(width = .1)) + 
+  facet_grid(expt ~ item_num) +
+  scale_colour_discrete(labels = c("control-double", "control-single", "inference"))
+```
+
+et accuracy.
 
 ```{r et_accuracy, fig.width = 10, fig.height = 4}
-## correct ~ t.crit.binned + trial_type + age_group
-mss <- d_et %>%
-  filter(age_group == "2" | age_group == "3" | age_group == "4" | age_group == "5" | age_group == "adult") %>%
-  # filter(expt == "0") %>%
+ms <- d_et %>%
   filter(t.crit > -1 & t.crit <= 3) %>%
-  group_by(expt,trial_type, age_group, t.crit.binned, subid) %>%
-  summarise(correct = mean(correct, na.rm = TRUE)) %>%
-  ungroup() %>%
-  mutate(subid = as.factor(subid),
-         age_group = as.factor(age_group),
-         age_group = factor(age_group, levels = c("2","3","4", "5", "adult")),
-         expt = as.factor(expt))
-levels(mss$expt) = c("2-vs-1", "3-vs-1") 
+  mutate(trial_type = factor(trial_type, labels = c("control-double", "control-single", "inference"))) %>%
+  group_by(expt,trial_type, age_group, t.crit.binned) %>%
+  summarise(correct = mean(correct, na.rm = TRUE))
 
-ms <- mss %>%
-  mutate(trial_type = as.factor(trial_type)) %>%
-  group_by(expt, t.crit.binned, trial_type, age_group) %>%
-  summarise(correct = mean(correct, na.rm=TRUE))
-
-# compare age groups
-p <- ggplot(subset(ms, age_group != "adult"), aes(x = t.crit.binned, y = correct, colour = age_group)) +
+ggplot(subset(ms, age_group != "adult"), 
+       aes(x = t.crit.binned, y = correct, colour = age_group)) +
   geom_line() +
   facet_grid(expt~trial_type) +
   geom_vline(xintercept=0,lty=3) + 
@@ -193,19 +201,17 @@ p <- ggplot(subset(ms, age_group != "adult"), aes(x = t.crit.binned, y = correct
   geom_hline(yintercept=.50,lty=4) + 
   xlab("Time (s)") + ylab("Proportion correct looking") + 
   scale_x_continuous(expand = c(0,0)) + 
-  scale_y_continuous(limits=c(0,1),expand = c(0,0))
-p
+  scale_y_continuous(limits=c(0,1),expand = c(0,0)) +
+  ggtitle("eye-tracking accuracy")
+
 ```
 
-Children are better at finding the correct answer for control trials than inference. They also get increasingly better at any trials with increasing age. 
-
-But there doesn't seem to be an advantage/disadvantage of having 3 items instead of 2 for the distractor.
-
-What if we compare 2-vs-1 and 3-vs-1 directly, facetting by condition and age-group?
+compare 2vs1 and 3vs1.
 
 ```{r et_itemnum}
 # compare 2-vs-1 vs. 3-vs-1
-p <- ggplot(subset(ms, age_group != "adult"), aes(x = t.crit.binned, y = correct, colour = expt)) +
+ggplot(subset(ms, age_group != "adult"), 
+       aes(x = t.crit.binned, y = correct, colour = expt)) +
   geom_line() +
   facet_grid(age_group~trial_type) +
   geom_vline(xintercept=0,lty=3) + 
@@ -213,20 +219,17 @@ p <- ggplot(subset(ms, age_group != "adult"), aes(x = t.crit.binned, y = correct
   geom_hline(yintercept=.50,lty=4) + 
   xlab("Time (s)") + ylab("Proportion correct looking") + 
   scale_x_continuous(expand = c(0,0)) + 
-  scale_y_continuous(limits=c(0,1),expand = c(0,0))
-p
+  scale_y_continuous(limits=c(0,1),expand = c(0,0)) +
+  ggtitle("eye-tracking 2-vs-1 vs. 3-vs-1")
+
 ```
 
-(control-single trials were the same in the two experiments) 
+onset contingent analysis.
 
-There does not seem to be any difference between the two experiments.
-
-## onset-contingency for inference trials
-
-```{r et_onsetcont, fig.width = 10, fig.height = 6}
+```{r et_onsetcont, fig.width = 10, fig.height = 4}
 ms <- d_et %>% 
-  filter(age_group == "2" | age_group == "3" | age_group == "4" | age_group == "5") %>%
-  filter(trial_type == "inf") %>%
+  filter(age_group != "adult") %>%
+  filter(trial_type == "inference") %>%
   group_by(expt, age_group, targetAtOnset, t.crit.binned) %>%
   summarize(correct = mean(correct, na.rm=TRUE)) %>%
   filter(targetAtOnset != "NA") %>%
@@ -238,11 +241,10 @@ ms <- d_et %>%
 
 levels(ms$targetAtOnset) <- c("distractor first", "target first")
 
-qplot(as.numeric(as.character(t.crit.binned)),correct,
-      colour=factor(targetAtOnset), 
-      geom="line", #lty=factor(targetAtOnset), # alpha=.5,     
-      data=ms) + 
-  facet_wrap(expt~age_group, ncol=4) + 
+ggplot(ms, 
+      aes(x = t.crit.binned, y = correct, colour = targetAtOnset)) +
+  geom_line() +
+  facet_grid(expt~age_group) + 
   scale_fill_brewer(palette="Set1") +
   geom_hline(yintercept=.5,lty=4) + 
   geom_vline(xintercept=.78,lty=3) + 
@@ -250,29 +252,20 @@ qplot(as.numeric(as.character(t.crit.binned)),correct,
   scale_y_continuous(expand = c(0, 0), limits=c(0,20)) + 
   xlab("Time (s)") + ylab("Proportion switching") + 
   scale_x_continuous(limits=c(0,2.9),expand = c(0,0)) + 
-  scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
+  scale_y_continuous(limits=c(0,1),expand = c(0,0)) + # make the axes start at 0
+  ggtitle("eye-tracking onset-contingent analysis")
 
 ```
 
-We see difference between 2-year-olds vs. 3, 4, 5-year-olds, but again no difference between 2-vs-1 and 3-vs-1.
-
-# iPad
-
-We tested the same stimuli on an iPad paradigm. The difference was that each participant saw both kinds of trials for control-double and inference: 2-vs-1 and 3-vs-1. We also included another variation for control-single trials (1-vs-1 and 2-vs-2).
+ipad accuracy.
 
 ```{r ipad_acc, fig.width = 10, fig.height = 4}
-mss <- d_ip %>%
-  filter(trial_type != "practice" & age_group != "2" & age_group != "6") %>%
+ms <- d_ip %>%
   group_by(age_group, trial_type, item_num, subid) %>%
-  summarize(correct = mean(correct, na.rm=TRUE),
-            rt = mean(rt, na.rm=TRUE))
-
-# accuracy
-ms <- mss %>%
+  summarize(correct = mean(correct)) %>%
   group_by(age_group, trial_type, item_num) %>%
-  summarise(correct = mean(correct, na.rm=TRUE),
-            cih = ci.high(correct, na.rm=TRUE),
-            cil = ci.low(correct, na.rm=TRUE))
+  multi_boot_standard(column = "correct") %>%
+  mutate(correct = mean)
 
 ggplot(ms, 
        aes(fill=item_num, y=correct, x=age_group)) +
@@ -281,19 +274,15 @@ ggplot(ms,
   facet_grid(.~trial_type) +
   guides(fill=guide_legend(title=NULL)) +
   geom_hline(yintercept=.50,lty=4) + 
-  geom_errorbar(aes(ymin=correct-cil,ymax=correct+cih,width=.2),position=position_dodge(width = 0.90))
+  geom_errorbar(aes(ymin=ci_lower,ymax=ci_upper,width=.2),position=position_dodge(width = 0.90)) +
+  ggtitle("ipad accuracy")
+
 ```
 
-There does not seem to be any difference between the item numbers.
+data munging...
 
-However, it is really striking that the accuracy rate on the iPad paradigm is much higher compared to eye-tracking paradigm, especially for the inference trials!
-
-# Comparing control-double and inference trials across experiments
-
-Here we compare only the control-double and inference trials across the eye-tracking and ipad paradigms.
-
-```{r etipad_accinf, fig.width = 10, fig.height = 4}
-# rearrange eye-tracking data
+```{r etipad_accinf}
+###### data munging #######
 d_et_comp <- d_et %>%
   filter(t.crit > 0.78 & t.crit <= 3) %>%
   mutate(item_num = substring(expt, 4)) %>%
@@ -309,229 +298,40 @@ d_et_comp <- d_et_comp %>%
 levels(d_et_comp$trial_type) <- c("control_double", "control_single", "inference")
 d_et_comp$expt <- "eye-tracking"
 
-# rearrange iPad data
-  
 d_ip_comp <- d_ip %>%
   select(age_group, trial_type, item_num, correct, subid) %>%
   group_by(age_group, trial_type, item_num, subid) %>%
-  summarise(correct = mean(correct, na.rm = TRUE))
+  summarise(correct = mean(correct))
 d_ip_comp$expt <- "iPad"
 
 # combine the two 
 d_comp <- rbind(d_et_comp, d_ip_comp)
-d_comp <- d_comp %>% 
-  mutate_each(funs(factor), c(expt, age_group, trial_type, item_num, subid)) %>%
-  filter(age_group != "6" & age_group != "adult") %>%
-  droplevels()
+#######################
+```
 
-# inference
-d_comp_inf <- d_comp %>%
-  filter(trial_type == "inference")
-ms <- d_comp_inf %>%
-  group_by(expt, age_group, item_num) %>%
-  summarise(correct = mean(correct, na.rm = TRUE),
-            cih = ci.high(correct, na.rm = TRUE),
-            cil = ci.low(correct, na.rm = TRUE))
+
+eye-tracking vs. ipad.
+
+compare just inference.
+
+```{r, fig.width = 10, fig.height = 6}
+ms <-  d_comp %>%
+  filter(age_group != "adult",
+         age_group != "2") %>%
+  filter(trial_type != "control_single") %>%
+  group_by(expt, age_group, item_num, trial_type) %>%
+  multi_boot_standard(column = "correct") %>%
+  mutate(correct = mean)
 
 # bar graph
 ggplot(ms, 
        aes(fill=item_num, y=correct, x=age_group)) +
   geom_bar(position="dodge", stat="identity") + 
-  facet_wrap(~expt, ncol=4) +
+  facet_grid(trial_type~expt) +
   ylab("Proportion correct looking") + 
   guides(fill=guide_legend(title=NULL)) +
   geom_hline(yintercept=.50,lty=4) + 
-  geom_errorbar(aes(ymin=correct-cil,ymax=correct+cih,width=.2),position=position_dodge(width = 0.90)) +
-  ggtitle("Inference trials: eye-t vs. iPad")
+  geom_errorbar(aes(ymin=ci_lower,ymax=ci_upper,width=.2),position=position_dodge(width = 0.90)) +
+  ggtitle("accuracy: eye-tracking vs. ipad")
   
-```
-
-(ignore 2-year-olds for iPad, there were only a couple of participants)
-
-For inference trials in eye-tracking, 3-year-olds are at chance and 4- and 5-year-olds are barely above chance for inference trials, while in iPad paradigm, even 3-year-olds are well above chance, nearing 80% accuracy rate.
-
-Is this true of other trials too (control-double and control-single)?
-
-```{r etipad_acccont, fig.width = 10, fig.height = 4}
-
-# control-double
-d_comp_cd <- d_comp %>%
-  filter(trial_type == "control_double")
-ms <- d_comp_cd %>%
-  group_by(expt, age_group, item_num) %>%
-  summarise(correct = mean(correct, na.rm = TRUE),
-            cih = ci.high(correct, na.rm = TRUE),
-            cil = ci.low(correct, na.rm = TRUE))
-
-# bar graph
-ggplot(ms, 
-       aes(fill=item_num, y=correct, x=age_group)) +
-  geom_bar(position="dodge", stat="identity") + 
-  facet_wrap(~expt, ncol=4) +
-  ylab("Proportion correct looking") + 
-  guides(fill=guide_legend(title=NULL)) +
-  geom_hline(yintercept=.50,lty=4) + 
-  geom_errorbar(aes(ymin=correct-cil,ymax=correct+cih,width=.2),position=position_dodge(width = 0.90)) +
-  ggtitle("Control-double trials: eye-t vs. iPad")
-
-
-# control-single
-d_comp_cs <- d_comp %>%
-  filter(trial_type == "control_single")
-ms <- d_comp_cs %>%
-  group_by(expt, age_group) %>%
-  summarise(correct = mean(correct, na.rm = TRUE),
-            cih = ci.high(correct, na.rm = TRUE),
-            cil = ci.low(correct, na.rm = TRUE))
-
-# bar graph
-ggplot(ms, 
-       aes(fill=age_group, y=correct, x=age_group)) +
-  geom_bar(position="dodge", stat="identity") + 
-  ylab("Proportion correct looking") + 
-  guides(fill=guide_legend(title=NULL)) +
-  facet_grid(.~expt) +
-  geom_hline(yintercept=.50,lty=4) + 
-  geom_errorbar(aes(ymin=correct-cil,ymax=correct+cih,width=.2),position=position_dodge(width = 0.90)) +
-   ggtitle("Control-single trials: eye-t vs. iPad")
-
-```
-
-Yes -- the difference is not as great as between inference trials in eye-tracking and iPad, but even on control trials children show greater accuracy rate.
-
-# rt ana - on ipad
-
-```{r ipad_rtcomp, fig.width = 10, fig.height = 4}
-mss <- d_ip %>%
-  filter(trial_type != "practice" & age_group != "2" & age_group != "6") %>%
-  group_by(age_group, trial_type, item_num, subid) %>%
-  summarize(correct = mean(correct, na.rm=TRUE),
-            rt = mean(rt, na.rm=TRUE))
-
-ms <- mss %>%
-  group_by(age_group, trial_type, item_num) %>%
-  summarise(rt = mean(rt, na.rm = TRUE),
-            cih = ci.high(rt, na.rm = TRUE),
-            cil = ci.low(rt, na.rm = TRUE))
-
-ggplot(ms, 
-       aes(color=item_num, y=rt, x=age_group)) +
-  geom_line(aes(group=item_num)) + 
-  ylab("rt") + 
-  facet_grid(.~trial_type) +
-  guides(fill=guide_legend(title=NULL)) +
-  geom_hline(yintercept=.50,lty=4) + 
-  geom_errorbar(aes(ymin=rt-cil,ymax=rt+cih,width=.1))
-
-ms <- mss %>%
-  group_by(age_group, trial_type) %>%
-  summarise(rt = mean(rt, na.rm = TRUE),
-            cih = ci.high(rt, na.rm = TRUE),
-            cil = ci.low(rt, na.rm = TRUE))
-
-ggplot(subset(ms, trial_type != "practice"), 
-       aes(color=trial_type, y=rt, x=age_group)) +
-  geom_line(aes(group=trial_type)) + 
-  ylab("rt") + 
-  guides(fill=guide_legend(title=NULL)) +
-  geom_hline(yintercept=.50,lty=4) + 
-  geom_errorbar(aes(ymin=rt-cil,ymax=rt+cih,width=.1))
-
-# comparing across different number of items present
-ms <- mss %>%
-  group_by(age_group, item_num) %>%
-  summarise(rt = mean(rt, na.rm = TRUE),
-            cih = ci.high(rt, na.rm = TRUE),
-            cil = ci.low(rt, na.rm = TRUE))
-
-ggplot(ms, 
-       aes(color=item_num, y=rt, x=age_group)) +
-  geom_line(aes(group=item_num)) + 
-  ylab("rt") + 
-  guides(fill=guide_legend(title=NULL)) +
-  geom_hline(yintercept=.50,lty=4) + 
-  geom_errorbar(aes(ymin=rt-cil,ymax=rt+cih,width=.1))
-```
-
-RT on inference trial is generally higher, but not as much as might be expected from the difference in the effects seen in et vs. ipad. 
-
-RT on trials with more items is higher, which confirms that children do spend more time on trials with more things to look at before making a decision. 
-
-# rt ana - eye-tracking
-
-```{r et_rtcomp, fig.width = 10, fig.height = 4}
-mss_et <- d_et %>%
-  filter(age_group != "adult" & age_group != "6") %>%
-  filter(targetAtOnset == FALSE) %>%
-  group_by(expt, age_group, trial_type, subid) %>%
-  summarize(rt = mean(switch_t, na.rm=TRUE))
-
-ms_et <- mss_et %>%
-  mutate(expt = substring(expt, 4)) %>%
-  group_by(expt, age_group, trial_type) %>%
-  summarize(rt = mean(rt, na.rm=TRUE),
-            cih = ci.high(rt, na.rm=TRUE),
-            cil = ci.low(rt, na.rm=TRUE))
-ms_et$trial_type <- as.factor(ms_et$trial_type)
-levels(ms_et$trial_type) <- c("control_double", "control_single", "inference")
-
-qplot(age_group, rt, group=trial_type, label=trial_type,
-      colour=trial_type, 
-      geom="line",
-      data=subset(ms_et, age_group != "1" & age_group != "Adults")) +
-    geom_linerange(aes(ymin=rt-cil,ymax=rt+cih,width=.2),
-                  position=position_dodge(width=.1)) + 
-  ylab("Reaction time (s) for first switch to target") + 
-  xlab(NULL) +
-  scale_colour_discrete(name="Trial Type") +
-  facet_grid(.~expt)
-```
-
-Compare ipad and et rt
-
-```{r etipad_rtcomp, fig.width = 10, fig.height = 10}
-# rearranging to compare ipad and et
-
-#ipad data
-mss_ip <- d_ip %>%
-  filter(age_group != "2" & age_group != "6") %>%
-  group_by(age_group, trial_type, item_num, subid) %>%
-  summarize(correct = mean(correct, na.rm=TRUE),
-            rt = mean(rt, na.rm=TRUE))
-
-ms_ip <- mss_ip %>%
-  group_by(age_group, trial_type, item_num) %>%
-  summarize(rt = mean(rt, na.rm=TRUE),
-            cih = ci.high(rt, na.rm=TRUE),
-            cil = ci.low(rt, na.rm=TRUE)) %>%
-  mutate(expt = "ipad") %>%
-  mutate(rt = rt/1000,
-         cih = cih/1000,
-         cil = cil/1000)
-
-#et data
-ms_et <- ms_et %>%
-  mutate(item_num = expt) %>%
-  mutate(expt = "eye-tracking")
-
-ms <- rbind(ms_et, ms_ip)
-ms <- ms %>%
-  filter(trial_type != "control_single" & trial_type != "practice") %>%
-  mutate(expt = as.factor(expt),
-         trial_type = as.factor(trial_type),
-         age_group = as.factor(age_group),
-         item_num = as.factor(item_num)
-  )
-
-qplot(age_group, rt, group=trial_type, label=trial_type,
-      colour=trial_type, 
-      geom="line",
-      data=ms) +
-    geom_linerange(aes(ymin=rt-cil,ymax=rt+cih,width=.2),
-                  position=position_dodge(width=.1)) + 
-  ylab("Reaction time (s) for first switch to target") + 
-  xlab(NULL) +
-  scale_colour_discrete(name="Trial Type") +
-  facet_grid(expt~item_num)
-
 ```
