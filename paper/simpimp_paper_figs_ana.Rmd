@@ -17,22 +17,36 @@ library(ggplot2)
 library(data.table)
 library(dplyr)
 library(tidyr)
+library(directlabels)
 library(langcog) # Langcog Lab useful R functions -- www.github.com/langcog/langcog
 theme_set(theme_bw())
 ```
 
 ```{r data, message=FALSE, include=FALSE}
 d_et <- rbind(
-  fread("../eye-tracking/processed_data/simpimp_et_age2.csv", data.table=FALSE),
-  fread("../eye-tracking/processed_data/simpimp_et_age3.csv", data.table=FALSE),
-  fread("../eye-tracking/processed_data/simpimp_et_age4.csv", data.table=FALSE),
-  fread("../eye-tracking/processed_data/simpimp_et_age5.csv", data.table=FALSE),
-  fread("../eye-tracking/processed_data/simpimp_et_adult.csv", data.table=FALSE)) %>%
+  fread("../eye-tracking/processed_data/simpimp_processed_2v1.csv", data.table=FALSE),
+  fread("../eye-tracking/processed_data/simpimp_processed_3v1.csv", data.table=FALSE)) %>%
   mutate(trial_type = factor(trial_type, labels = c("control-double", "control-single", "inference")),
          age_group = as.factor(age_group),
-         expt = as.factor(expt),
+         expt = factor(expt, labels = c("2-vs-1", "3-vs-1")),
          subid = as.factor(subid),
-         targetAtOnset = as.factor(targetAtOnset))
+         t.crit = as.numeric(as.character(t.crit)))
+#         targetAtOnset = as.factor(targetAtOnset)
+
+## targetAtOnset: Indicate where subject was looking at during word onset
+onset <- d_et %>%
+  select(subid, stimulus, t.crit, correct) %>%
+  filter(t.crit > - 0.004 & t.crit < 0.004) %>%
+  mutate(targetAtOnset = ifelse(correct == TRUE, TRUE, FALSE)) %>%
+  select(subid, stimulus, targetAtOnset) %>%
+  distinct(subid, stimulus)
+d_et <- left_join(d_et, onset)
+
+## subsample the data so that you get smooth curves***
+subsample.hz <- 30 
+d_et <- d_et %>%
+  mutate(t.crit.binned = round(t.crit*subsample.hz)/subsample.hz) %>%
+  mutate(t.crit.binned = signif(t.crit.binned, 4))
 head(d_et)
 
 d_ip <- fread("../ipad/simpimp_ipad_short.csv", data.table=FALSE) %>%
@@ -98,7 +112,7 @@ d_ip <- d_ip %>%
 
 et_rts <- d_et %>%
   filter(t.crit > 0, targetAtOnset == FALSE & correct == TRUE) %>%
-  group_by(subid, expt, order, trial_type, age_group, stimulus) %>%
+  group_by(subid, expt, trial_type, age_group, stimulus) %>%
   summarize(rt = min(t.crit))
 
 # remove outliers, by rt
@@ -110,7 +124,7 @@ et_rts <- et_rts %>%
          log(rt) > bottom_bound)
 ```
 
-```{r}
+```{r proportion_drops}
 # looking at proportion of drops in et 2vs1
 log_2vs1 <- read.csv("../eye-tracking/info/simpimp_log.csv") %>%
   filter(keep_drop == "keep",
@@ -124,11 +138,14 @@ log_2vs1 <- read.csv("../eye-tracking/info/simpimp_log.csv") %>%
          
 log_comparison_2vs1 <- d_et %>% 
   distinct(subid) %>% 
-  filter(expt == "et_2vs1") %>%
+  filter(expt == "2-vs-1") %>%
   select(subid, age_group) 
+
+#log_comp <- inner_join(log_comparison_2vs1, log_2vs1)
 
 log_comparison_2vs1 <- as.data.frame(summary(log_comparison_2vs1$age_group))
 log_2vs1 <- as.data.frame(summary(log_2vs1$age_group))
+
 
 # looking at proportion of drops in et 3vs1
 log_3vs1 <- read.csv("../eye-tracking/info/simpimp_log.csv") %>%
@@ -143,11 +160,24 @@ log_3vs1 <- read.csv("../eye-tracking/info/simpimp_log.csv") %>%
          
 log_comparison_3vs1 <- d_et %>% 
   distinct(subid) %>% 
-  filter(expt == "et_3vs1") %>%
+  filter(expt == "3-vs-1") %>%
   select(subid, age_group) 
 
 log_comparison_3vs1 <- as.data.frame(summary(log_comparison_3vs1$age_group))
 log_3vs1 <- as.data.frame(summary(log_3vs1$age_group))
+
+# ipad
+log_comparison_ipad <- d_ip %>% 
+  distinct(subid) %>% 
+  select(subid, age_group) 
+log_comparison_ipad <- as.data.frame(summary(log_comparison_ipad$age_group))
+
+log_ipad <- read.csv("../ipad/simpimp_ipad_log.csv") %>%
+    distinct(subid) %>% 
+  select(subid, age_group) %>%
+  mutate(age_group = as.factor(age_group))
+log_ipad <- as.data.frame(summary(log_ipad$age_group))
+
 
 ```
 
@@ -191,6 +221,41 @@ ggplot(subset(ms, age_group != "Adults" & trial_type == "inference"),
   scale_y_continuous(limits=c(0,1),expand = c(0,0)) +
   scale_color_discrete(name=NULL,
                        labels=c("Expt 1 (2-vs-1)", "Expt 2 (3-vs-1)"))
+
+# looking at early vs late windows
+
+ms <- d_et %>%
+  filter(t.crit > 0.78 & t.crit <= 3,
+         trial_type == "inference",
+         age_group != "adult") %>%
+  mutate(window = ifelse(t.crit < 1.89, "early", "late")) %>%
+  group_by(expt, window, age_group, subid) %>%
+  summarise(correct = mean(correct)) %>%
+  group_by(expt, window, age_group) %>%
+  multi_boot_standard(column = "correct") %>%
+  mutate(correct = mean)
+levels(ms$expt) <- c("Experiment 1", "Experiment 2")
+
+ggplot(ms, 
+       aes(fill=window, y=mean, x=window)) +
+  geom_bar(position="dodge", stat="identity") + 
+  facet_grid(age_group~expt) +
+  ylab("Proportion correct looking") + 
+  guides(fill=guide_legend(title=NULL)) +
+  geom_hline(yintercept=.50,lty=4) + 
+  geom_errorbar(aes(ymin=ci_lower,ymax=ci_upper,width=.2),position=position_dodge(width = 0.90)) +
+  ggtitle("Inference trials: by-window analysis")
+
+ms <- d_et %>%
+  filter(t.crit > 0.78 & t.crit <= 3,
+         trial_type == "inference",
+         age_group != "adult") %>%
+  mutate(age_group = as.numeric(as.character(age_group))) %>%
+  mutate(window = ifelse(t.crit < 1.89, "early", "late")) %>%
+  group_by(expt, window, age_group, subid) %>%
+  summarise(correct = mean(correct))
+summary(lmer(correct ~ expt * window * age_group + (1 | subid), data = ms))
+# why no main effect of window?
 ```
 
 ```{r et_rt, echo=FALSE, message=FALSE, fig.width = 7, fig.height = 3, fig.align='center', fig.cap='eye-tracking rt'}
@@ -202,13 +267,19 @@ et_rt_ms <- et_rts %>%
   multi_boot_standard(column = "rt") %>%
   mutate(rt = mean)
 
+levels(et_rt_ms$expt) <- c("Experiment 1", "Experiment 2")
 ggplot(et_rt_ms, aes(x = age_group, y = rt, group = trial_type, col = trial_type, label = trial_type)) + 
   geom_line() + 
   geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
                   position = position_dodge(width = .1)) + 
   facet_grid(. ~ expt) +
-  scale_colour_discrete(labels = c("control-double", "control-single", "inference")) + 
-  geom_dl(aes(label=trial_type) ,method="smart.grid")
+  scale_colour_discrete(labels = c("control-double", "control-single", "inference")) +
+  guides(colour=guide_legend(title="Trial type")) +
+  ylab("Reaction time (s)") +
+  xlab("Age (years)")
+  
+
+  # geom_dl(aes(label=trial_type) ,method="smart.grid")
 
   #  geom_text(check_overlap=TRUE)
 
@@ -235,12 +306,15 @@ ms <- d_et %>%
          age_group = factor(age_group, levels = c("2","3","4", "5", "adult")))
 
 levels(ms$targetAtOnset) <- c("distractor first", "target first")
+levels(ms$age_group) <- c("2-year-olds", "3-year-olds", "4-year-olds", "5-year-olds", "adult")
+levels(ms$expt) <- c("Experiment 1", "Experiment 2")
 
 ggplot(ms, 
       aes(x = t.crit.binned, y = correct, colour = targetAtOnset)) +
   geom_line() +
   facet_grid(expt~age_group) + 
   scale_fill_brewer(palette="Set1") +
+  guides(colour=guide_legend(title=NULL)) +
   geom_hline(yintercept=.5,lty=4) + 
   geom_vline(xintercept=.78,lty=3) + 
   geom_vline(xintercept=0,lty=3) + 
@@ -254,7 +328,7 @@ ggplot(ms,
 ###### data munging #######
 d_et_comp <- d_et %>%
   filter(t.crit > 0.78 & t.crit <= 3) %>%
-  mutate(item_num = substring(expt, 4)) %>%
+  mutate(item_num = expt) %>%
   select(item_num, age_group, trial_type, t.crit, correct, subid) %>%
   mutate(correct = as.factor(correct))
 levels(d_et_comp$correct) <- c(0,1)
@@ -269,6 +343,7 @@ d_et_comp$expt <- "eye-tracking"
 
 d_ip_comp <- d_ip %>%
   select(age_group, trial_type, item_num, correct, subid) %>%
+  mutate(item_num = ifelse(item_num == "2vs1", "2-vs-1", "3-vs-1")) %>%
   group_by(age_group, trial_type, item_num, subid) %>%
   summarise(correct = mean(correct, na.rm = TRUE))
 d_ip_comp$expt <- "iPad"
@@ -280,7 +355,7 @@ d_comp <- rbind(d_et_comp, d_ip_comp)
 
 ## ipad
 
-```{r, ipad_accuracy_graph, echo=FALSE, message=FALSE, fig.width = 7, fig.height = 5, fig.align='center', fig.cap='iPad accuracy and rt'}
+```{r ipad, ipad_accuracy_graph, echo=FALSE, message=FALSE, fig.width = 7, fig.height = 5, fig.align='center', fig.cap='iPad accuracy and rt'}
 ms <- d_ip %>%
   group_by(age_group, trial_type, item_rel, subid) %>%
   summarize(correct = mean(correct, na.rm=TRUE)) %>%
@@ -293,21 +368,29 @@ p1 <- ggplot(ms, aes(x = age_group, y = correct, group = item_rel, col = item_re
   geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
                   position = position_dodge(width = .1)) + 
   facet_grid(. ~ trial_type) +
-  guides(fill=guide_legend(title="Number of features")) +
-  geom_hline(yintercept=.50,lty=4)
+  guides(colour=guide_legend(title="Number of features")) +
+  geom_hline(yintercept=.50,lty=4) +
+  ylab("Accuracy") +
+  xlab("Age") +
+  ylim(c(0, 1))
 
 ip_rt_ms <- d_ip %>%
   group_by(trial_type, item_rel, age_group, subid) %>%
   summarise(rt = mean(rt)) %>%
   group_by(trial_type, item_rel, age_group) %>%
   multi_boot_standard(column = "rt") %>%
-  mutate(rt = mean)
+  mutate(rt = mean) +
+  
 
 p2 <- ggplot(ip_rt_ms, aes(x = age_group, y = rt, group = item_rel, col = item_rel)) + 
   geom_line() + 
   geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
                   position = position_dodge(width = .1)) + 
-  facet_grid(. ~ trial_type)
+  facet_grid(. ~ trial_type) +
+  ylab("Reaction time (s)") +
+  xlab("Age") +
+  guides(colour=guide_legend(title="Number of features"))
+
 
 multiplot(p1, p2, cols=1)
 ```
@@ -333,7 +416,8 @@ ggplot(ms,
   guides(fill=guide_legend(title=NULL)) +
   geom_hline(yintercept=.50,lty=4) + 
   geom_errorbar(aes(ymin=ci_lower,ymax=ci_upper,width=.2),position=position_dodge(width = 0.90)) +
-  ggtitle("Inference trials: eye-t vs. iPad")
+  xlab("Age (years)") +
+  ggtitle("Eye-tracking vs. iPad: Accuracy")
   
 ```
 
@@ -342,11 +426,12 @@ ggplot(ms,
 ```{r etipad_rt, echo=FALSE, message=FALSE, fig.width = 7, fig.height = 4, fig.align='center', fig.cap='eye-tracking vs. iPad: rt'}
 et_rt_ms <- et_rt_ms %>%
   ungroup() %>%
-  mutate(item_num = substring(expt, 4),
+  mutate(item_num = expt,
          experiment = "eye-tracking") %>%
   select(experiment, age_group, trial_type, item_num, rt, ci_lower, ci_upper)
 
 ip_rt_ms <- d_ip %>%
+  mutate(item_num = ifelse(item_num == "2vs1", "2-vs-1", "3-vs-1")) %>%
   group_by(trial_type, item_num, age_group, subid) %>%
   summarise(rt = mean(rt)) %>%
   group_by(trial_type, item_num, age_group) %>%
