@@ -144,7 +144,7 @@ Then what factors are responsible for children’s struggle with implicature pro
 
 Tasks using SI’s broadly have suggested that children struggle with implicature computation, but some accounts have suggested that results may differ if processing constraints are minimized. A useful simple test for this question is to look at children's processing of ad-hoc implicatures, which involve the knowledge of contextually-derived scales or alternatives, rather than lexically-derived alternatives. Because the inference is contextual, alternatives can easily be provided in the context, making the access to alternatives for implicature processing much easier for children. 
 
-Indeed, children have shown more promising performances on ad-hoc implicature tasks. @papafragou2004children showed that, in a context where a puppet was instructed to e.g., wrap two gifts (a parrot and a doll), and he was asked “Did you wrap the gifts,” 4- to 6-year-olds correctly rejected to reward the puppet who said, “I wrapped the parrot.” Based on these results, Papafragou and Tantalou claimed that children were able to compute implicatures and when the constitution of alternatives (parrot vs. parrot and doll) was possible (but see @sullivan2011conv). @barner2011accessing also showed that 5-year-olds, who saw three out of three animals (a cat, cow, and dog) sleeping, correctly reject the statement “only cat and cow are sleeping” but not “only some of the animals are sleeping,” again showing that access to alternatives may be crucial for children. @katsos2011pragmatic found additional evidence that 5-year-olds can compute ad-hoc implicatures, as they gave lower reward for under-informative utterances with ad-hoc scales at higher rates than for those with lexical scales (e.g. <some-all>).
+Indeed, children have shown more promising performances on ad-hoc implicature tasks. @papafragou2004children showed that, in a context where a puppet was instructed to e.g., wrap two gifts (a parrot and a doll), and he was asked “Did you wrap the gifts,” 4- to 6-year-olds correctly rejected to reward the puppet who said, “I wrapped the parrot.” Based on these results, Papafragou and Tantalou claimed that children were able to compute implicatures and when the constitution of alternatives (parrot vs. parrot and doll) was possible. @barner2011accessing also showed that 5-year-olds, who saw three out of three animals (a cat, cow, and dog) sleeping, correctly reject the statement “only cat and cow are sleeping” but not “only some of the animals are sleeping,” again showing that access to alternatives may be crucial for children. @katsos2011pragmatic found additional evidence that 5-year-olds can compute ad-hoc implicatures, as they gave lower reward for under-informative utterances with ad-hoc scales at higher rates than for those with lexical scales (e.g. <some-all>).
 
 @stillerLLD provided evidence that children as young as 3.5 years of age successfully compute ad-hoc implicatures in a simple referent-selection paradigm, when extraneous task demands were reduced. They presented 2- to 4-year-old children with pictures of three different faces, for instance: one wearing glasses and a top hat, another one wearing only glasses, and another wearing none of the two. Then a puppet said, “my friend has glasses,” then asked children to pick out the correct referent. Given the context, only using the term “glasses” implicates the referent has “glasses but not a top-hat,” suggesting that the face with only glasses is the referent. Indeed, Stiller et al. found that children as young as 3.5 years of age chose the implicature-consistent, one-feature referent above chance when they heard utterances such as “my friend has glasses.” This suggested that children as young as 4 years are in fact able to compute implicatures, given the availability of inferential alternatives in the context. 
 
@@ -328,6 +328,7 @@ We next analyzed participants' reaction times [@fernald2008looking]. We selected
 grid::grid.raster(png::readPNG("figs/et-onsetcont_fill2.png"))
 ```
 
+
 One question is whether younger children had difficulty shifting correctly from distractor to target, or whether they shifted incorrectly away from target to look at distractor. To explore this question, we looked at target- and distractor-initial trials separately, contingent on which item the child was looking toward from the onset of the target noun [@fernald2010]. Top panel in Figure 2 shows the mean proportion of participants that switched from where they started in Experiment 1. Thus, increase in shift on distractor-initial trials is a correct response, whereas increase in shift on target-initial trials is an *incorrect* response. 
 
 Across all age groups, there was an initial increase in shift for both target-initial and distractor-initial trials, until the offset of the target word. Then age groups diverged in their looking pattern, and two-year-olds' struggle was evident: whereas older children's switch to distractor decreased and switch to target increased,  two-year-olds' switch to distractor continued to *increase* after the target offset, whereas shift from distractor to target stayed the same. 
@@ -466,7 +467,7 @@ print(xtable(e12.tab,
 
 ### Comparison between Experiment 1 and 2
 
-To determine the effect of saliency contrast on children's inferential processing, we compared looking at targets across both Experiment 1 and 2 for inference trials. A linear mixed-effects model predicting accuracy based on experiment, age, and trial type (Table 2) revealed significant main effects of trial type and age, but no interaction between Experiment 2 and any other variable. Thus, in contrast to our initial predictions, we did not find evidence of the effect of perceptual saliency on children's looking patterns. Why did two-year-olds not look at the distractor more than the target even though the distractor salience was increased? It is possible that even younger children benefitted from the strengthed implicature ("carrot *but not banana and not cucumber*"), or that they simply needed more time to explore and process all that is displayed.
+To determine the effect of saliency contrast on children's inferential processing, we compared looking at targets across both Experiment 1 and 2 for inference trials. A linear mixed-effects model predicting accuracy based on experiment, age, and trial type (Table 3) revealed significant main effects of trial type and age, but no interaction between Experiment 2 and any other variable. Thus, in contrast to our initial predictions, we did not find evidence of the effect of perceptual saliency on children's looking patterns. Why did two-year-olds not look at the distractor more than the target even though the distractor salience was increased? It is possible that even younger children benefitted from the strengthed implicature ("carrot *but not banana and not cucumber*"), or that they simply needed more time to explore and process all that is displayed.
 
 In both Experiments 1 and 2, we found lower proportion of look toward inferential target than expected from older children, rarely exceeding 65%. One possible explanation is that children needed more time to completely process all the information presented in one trial, especially for Experiment 2. But based on the current findings, children, and even adults to some extent, did not reach the predicted level of referent identification across both Experiments that used eye-tracking. Thus, this could potentially be a methodological issue: eye-tracking may not be capturing the full process of implicature computation. To explore this possibility, Experiment 3 examined children's implicature computation on another paradigm, using tablet.
 
@@ -640,7 +641,37 @@ grid::grid.raster(png::readPNG("figs/etip_comp1.png"))
 
 Comparison of accuracy and reaction time measures from the eye-tracking paradigm (Experiments 1 and 2) and tablet paradigm (Experiment 3) shows that the developmental trajectory of implicature processing and robust implicature computation by older children are much more clearly revealed in the tablet paradigm than in the eye-tracking paradigm (Figure 5). In fact, accuracy for inferential trials in the tablet paradigm was overall higher than what was reported in @stillerLLD, possibly due to visual stimuli that were even more simplified (two referent candidates instead of three). In the tablet paradigm, both control and inference trials showed improvement in accurate referent identification over age, but much more prominently for inference trials. In eye-tracking, the improvement was observed in inference trials and was much subtler. Similarly, children responded quicker to the correct referent increasingly with age in both control and inference trials in the tablet paradigm, and this gain in efficiency was present in only inference trials in the eye-tracking paradigm.
 
-Thus, the tablet paradigm more clearly showed children's success in implicature computation compared to eye-tracking. There are a few different possible interpretations of this result: eye-tracking may be better at capturing the ambiguity and uncertainty of ad-hoc implicature. Also, children might have needed more time to respond for the eye-tracking paradigm.
+```{r etip_rel_tab, echo = F, results = 'asis'}
+
+age_group <- c("2", " ", "3", " ", "4", " ", "5", " ")
+paradigm <-c("eye-tracking", "tablet","eye-tracking", "tablet","eye-tracking", "tablet","eye-tracking", "tablet")
+mean_trials_acc <- c("10.48", "11.44", "10.44", "11.55", "10.89", "12.00", "10.62", "11.84")
+alpha_acc <- c(".43", ".78", ".66", ".84", ".61", ".42", ".57", ".20")
+mean_trials_rt <- c("3.53", "15.16", "3.42", "15.17", "2.87", "16.00", "3.55", "15.68")
+alpha_rt <- c(".45", ".29", ".77", ".79", "-.33", ".86", "-.12", ".65")
+e5.tab <- data.frame(age_group, paradigm, mean_trials_acc
+                     , alpha_acc, mean_trials_rt, alpha_rt)
+colnames(e5.tab) <- c("Age bin", "Paradigm", "M trials (acc)"
+                      , "alpha accuracy", "M trials (RT)", "alpha RT")
+
+print(xtable(e5.tab,
+             align = c("l", "l","c","c","c", "c","c"),
+             label = "tab:etip_rel",
+             caption = "Standardized reliability coefficients (Cronbach's alpha) for accuracy (acc) and reaction time (RT) by paradigm and age group, along with the mean number of trials for each."),
+      include.rownames=FALSE,hline.after=c(0,nrow(e5.tab)),
+      sanitize.text.function=function(x){x},
+      caption.placement = 'bottom', 
+      table.placement = "tb",
+      comment = F)
+
+```
+
+<!--reliability: cronbach's alpha-->
+We also examined whether our study measured the variable of interest with good reliability, by computing Cronbach’s $\alpha$, a statistic that determines the internal consistency of experimental items [@santos1999cronbach]. Across both eye-tracking and tablet paradigms, Our study contained three trial types (control-single, control-double, and inference), with 8, 4, and 4 trials respectively, a small number on which to compute reliability statistics. We chose to look at 12 control trials (control-single and control-double) and compute a reliability coefficient for each experiment and age group, for both accurate looking and reaction times (see Table 5). 
+
+Overall, reliability estimates looks reasonable for accuracy and RT, with a few aspects to be noted. For accuracy, younger children show decent reliability in both paradigms, whereas older children show low reliability for tablet paradigm, which may be due to the ceiling effect across all trials with tablet. For RT, reliability is generally higher for tablet paradigms, especially among older children. It should be noted that RT reliability for eye-tracking was computed with very sparse data (2-3 trials).
+
+Thus, the tablet paradigm overall more clearly and more reliably showed children's success in implicature computation compared to eye-tracking. There are a few different possible interpretations of this result: eye-tracking may be better at capturing the ambiguity and uncertainty of ad-hoc implicature. Also, children might have needed more time to respond for the eye-tracking paradigm.
 
 \newpage
 
