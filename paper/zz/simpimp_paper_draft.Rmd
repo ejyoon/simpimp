@@ -42,7 +42,7 @@ library(langcog) # Langcog Lab useful R functions -- www.github.com/langcog/lang
 theme_set(theme_bw())
 ```
 
-```{r calldata, message=FALSE, include=FALSE}
+```{r calldata_, message=FALSE, include=FALSE}
 d_et <- rbind(
   fread("../eye-tracking/processed_data/simpimp_processed_2v1.csv", data.table=FALSE),
   fread("../eye-tracking/processed_data/simpimp_processed_3v1.csv", data.table=FALSE)) %>%
@@ -80,7 +80,7 @@ d_ip <- d_ip %>%
   filter(!subid %in% subj_notenoughtrials$subid) %>%
   mutate(expt = "ipad") %>%
   filter(trial_type != "practice",
-         age_group != "2",
+         age_group != "1",
          age_group != "6") %>%
   mutate(trial_type = factor(trial_type, labels = c("control-double", "control-single", "inference"))) %>%
   mutate(
@@ -413,6 +413,7 @@ expt2.rt.inf.beta <- round(summary(expt2.rt.lmer)$coef[3], 2)
 expt2.rt.age.beta <- round(summary(expt2.rt.lmer)$coef[4], 2)
 expt2.rt.int.beta <- round(summary(expt2.rt.lmer)$coef[6], 2)
 
+expt12.rt.lmer <- lmer(rt ~ expt * trial_type * age_group + (trial_type | subid) + (age_group | stimulus), data=et_rt_ms)
 ```
 
 <!--RT slow for inference, faster with age-->
@@ -531,19 +532,19 @@ d_comp <- rbind(d_et_comp, d_ip_comp)
 grid::grid.raster(png::readPNG("figs/ip_accrt2.png"))
 ```
 
-```{r expt3}
+```{r expt3lm}
 ms <- d_ip %>%
   mutate(age_group = as.numeric(as.character(age_group)),
          trial_type = relevel(as.factor(trial_type), ref = "control-single")) %>%  
   group_by(age_group, trial_type, item_rel, subid) %>%
   summarize(correct = mean(correct, na.rm=TRUE))
 
-expt3.acc.lmer <- lmer(correct ~ trial_type * age_group * item_rel + (1 | subid), data=ms)
+expt3.acc.lmer <- lmer(correct ~ trial_type * age_group * item_rel + (trial_type + item_rel | subid), data=ms)
 
 expt3.acc.inf.beta <- round(summary(expt3.acc.lmer)$coef[3], 2)
 ```
 
-```{r expt3tab, echo = F, results = 'asis'}
+```{r expt3tb, echo = F, results = 'asis'}
 e3.tab <- as.data.frame(summary(expt3.acc.lmer)$coef)
 
 e3.tab$Predictor <- c("Intercept",
