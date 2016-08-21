@@ -8,3 +8,6 @@ et_ipad/rsconnect/
 *.Rhistory
 *.key
 readings/*
+
+paper/simpimp_paper_draft.pdf
+packrat/lib*/
