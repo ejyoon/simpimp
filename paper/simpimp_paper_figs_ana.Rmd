@@ -17,12 +17,16 @@ library(ggplot2)
 library(data.table)
 library(dplyr)
 library(tidyr)
+library(lme4)
 library(directlabels)
 library(langcog) # Langcog Lab useful R functions -- www.github.com/langcog/langcog
+library(psych)
+library(stringr)
 theme_set(theme_bw())
+setwd("Documents/Research/simpimp_GIT/paper/")
 ```
 
-```{r data, message=FALSE, include=FALSE}
+```{r data_et, message=FALSE, include=FALSE}
 d_et <- rbind(
   fread("../eye-tracking/processed_data/simpimp_processed_2v1.csv", data.table=FALSE),
   fread("../eye-tracking/processed_data/simpimp_processed_3v1.csv", data.table=FALSE)) %>%
@@ -49,11 +53,82 @@ d_et <- d_et %>%
   mutate(t.crit.binned = signif(t.crit.binned, 4))
 head(d_et)
 
-d_ip <- fread("../ipad/simpimp_ipad_short.csv", data.table=FALSE) %>%
+```
+
+
+```{r data_ip, message=FALSE, include=FALSE}
+d_ip <- fread("../ipad/simpimp_ipad_short.csv", data.table=FALSE)
+
+# recruited
+subj_ip_all <- d_ip %>%
+    group_by(subid, age_group) %>%
+    summarise(nrow=n()) %>%
+    group_by(age_group) %>%
+    summarise(nrow=n())
+subj_ip_all
+
+# filter by external criteria
+d_ip <- d_ip %>%
   mutate(expt = "ipad") %>%
   filter(trial_type != "practice",
-         age_group != "2",
-         age_group != "6") %>%
+         age_group != "1",
+         age_group != "6",
+         english > 3) %>%
+  droplevels()
+
+subj_ip_filtered <- d_ip %>%
+    group_by(subid, age_group) %>%
+    summarise(nrow=n()) %>%
+    group_by(age_group) %>%
+    summarise(nrow=n())
+subj_ip_filtered
+
+# filter by internal (data) criteria
+subj_notenoughtrials <- d_ip %>%
+    group_by(subid, age_group) %>%
+    summarise(nrow=n()) %>%
+    filter(nrow < 10) %>%
+    group_by(age_group) %>%
+    summarise(nrow=n())
+subj_notenoughtrials   
+
+subj_notenoughtrials <- d_ip %>%
+    group_by(subid) %>%
+    summarise(nrow=n()) %>%
+    filter(nrow < 10) %>%
+    droplevels()
+
+d_ip <- d_ip %>%
+  filter(!subid %in% subj_notenoughtrials$subid) %>%
+  droplevels()
+
+subj_ip_final <- d_ip %>%
+    group_by(subid, age_group) %>%
+    summarise(nrow=n()) %>%
+    group_by(age_group) %>%
+    summarise(nrow=n())
+subj_ip_final
+
+# mean age
+age <- d_ip %>%
+  group_by(subid, age_group, age, sex, expt) %>%
+  summarise(nrow=n()) %>%
+  group_by(expt, age_group) %>%
+  summarise(meanAge=mean(as.numeric(as.character(age)),na.rm=TRUE),
+            minAge=min(as.numeric(as.character(age)),na.rm=TRUE),
+            maxAge=max(as.numeric(as.character(age)),na.rm=TRUE))
+age
+
+sex <- d_ip %>%
+  filter(age_group!="adult")%>%
+  group_by(subid, age_group, age, sex) %>%
+  summarise(nrow=n()) %>%
+  filter(sex == "F") %>%
+  group_by(age_group) %>%
+  summarise(nrow=n())
+sex
+
+d_ip <- d_ip %>%
   mutate(trial_type = factor(trial_type, labels = c("control-double", "control-single", "inference"))) %>%
   mutate(
     subid = as.factor(subid),
@@ -61,8 +136,14 @@ d_ip <- fread("../ipad/simpimp_ipad_short.csv", data.table=FALSE) %>%
     item_num = as.factor(item_num),
     item_rel = as.factor(item_num))
 levels(d_ip$item_rel) <- c("fewer", "fewer", "more", "more")
+d_ip <- d_ip %>%
+  mutate(correct = as.factor(correct))
+levels(d_ip$correct) <- c(0,1)
+d_ip$correct <- as.numeric(as.character(d_ip$correct))
 head(d_ip)
+```
 
+```{r multiplot_fn, message=FALSE, include=FALSE}
 #multiplot fn
 multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
   library(grid)
@@ -112,7 +193,7 @@ d_ip <- d_ip %>%
 
 et_rts <- d_et %>%
   filter(t.crit > 0, targetAtOnset == FALSE & correct == TRUE) %>%
-  group_by(subid, expt, trial_type, age_group, stimulus) %>%
+  group_by(subid, expt, trial_type, age_group, trial_num) %>%
   summarize(rt = min(t.crit))
 
 # remove outliers, by rt
@@ -124,10 +205,21 @@ et_rts <- et_rts %>%
          log(rt) > bottom_bound)
 ```
 
-```{r proportion_drops}
-# looking at proportion of drops in et 2vs1
+```{r proportion_drops_et}
+# looking at proportion of drops in eye-tracking
+# 2vs1
 log_2vs1 <- read.csv("../eye-tracking/info/simpimp_log.csv") %>%
   filter(keep_drop == "keep",
+         expt == "0",
+         age_group != "0" 
+         & age_group != "6" 
+         & age_group != "1" 
+         & !is.na(age_group)) %>%
+  mutate(subid = substring(subid, 1, 9)) %>%
+  droplevels()
+
+log_2vs1_drop <- read.csv("../eye-tracking/info/simpimp_log.csv") %>%
+  filter(keep_drop == "drop",
          expt == "0",
          age_group != "0" 
          & age_group != "6" 
@@ -141,15 +233,27 @@ log_comparison_2vs1 <- d_et %>%
   filter(expt == "2-vs-1") %>%
   select(subid, age_group) 
 
+
 #log_comp <- inner_join(log_comparison_2vs1, log_2vs1)
 
-log_comparison_2vs1 <- as.data.frame(summary(log_comparison_2vs1$age_group))
-log_2vs1 <- as.data.frame(summary(log_2vs1$age_group))
-
+log_comparison_2vs1_d <- as.data.frame(summary(log_comparison_2vs1$age_group))
+log_2vs1_d <- as.data.frame(summary(log_2vs1$age_group))
+log_comparison_2vs1_d # kept 
+log_2vs1_d # total collected
 
 # looking at proportion of drops in et 3vs1
 log_3vs1 <- read.csv("../eye-tracking/info/simpimp_log.csv") %>%
   filter(keep_drop == "keep",
+         expt == "sc",
+         age_group != "0" 
+         & age_group != "6" 
+         & age_group != "1" 
+         & !is.na(age_group)) %>%
+  mutate(subid = substring(subid, 1, 9)) %>%
+  droplevels()
+
+log_3vs1_drop <- read.csv("../eye-tracking/info/simpimp_log.csv") %>%
+  filter(keep_drop == "drop",
          expt == "sc",
          age_group != "0" 
          & age_group != "6" 
@@ -163,9 +267,15 @@ log_comparison_3vs1 <- d_et %>%
   filter(expt == "3-vs-1") %>%
   select(subid, age_group) 
 
-log_comparison_3vs1 <- as.data.frame(summary(log_comparison_3vs1$age_group))
-log_3vs1 <- as.data.frame(summary(log_3vs1$age_group))
+log_comparison_3vs1_d <- as.data.frame(summary(log_comparison_3vs1$age_group))
+log_3vs1_d <- as.data.frame(summary(log_3vs1$age_group))
+log_comparison_3vs1_d # kept 
+log_3vs1_d # total collected
 
+```
+
+
+```{r proportion_drops_ip}
 # ipad
 log_comparison_ipad <- d_ip %>% 
   distinct(subid) %>% 
@@ -178,38 +288,185 @@ log_ipad <- read.csv("../ipad/simpimp_ipad_log.csv") %>%
   mutate(age_group = as.factor(age_group))
 log_ipad <- as.data.frame(summary(log_ipad$age_group))
 
-
+log_comparison_ipad
+log_ipad
 ```
 
-```{r et_accuracy, echo=FALSE, message=FALSE, fig.width = 7, fig.height = 4, fig.align='center', fig.cap='eye-tracking accuracy'}
+```{r et_accuracy, echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4.5, fig.align='center', fig.cap='eye-tracking accuracy'}
 ## correct ~ t.crit.binned + trial_type + age_group
+# ms <- d_et %>%
+#   filter(t.crit > -1 & t.crit <= 3) %>%
+#   group_by(expt,trial_type, age_group, t.crit.binned) %>%
+#   summarise(correct = mean(correct, na.rm = TRUE))
+# levels(ms$expt) <- c("Experiment 1", "Experiment 2")
+# 
+# 
+# # et_accuracy <- 
+# ggplot(ms, 
+#        aes(x = t.crit.binned, y = correct, colour = age_group)) +
+#   geom_line() +
+#   facet_grid(expt~trial_type) +
+#   geom_vline(xintercept=0,lty=3) + 
+#   geom_vline(xintercept=0.78,lty=3) + 
+#   geom_hline(yintercept=.50,lty=4) + 
+#   xlab("Time (s)") + ylab("Proportion looking to target") + 
+#   scale_x_continuous(expand = c(0,0)) + 
+#   scale_y_continuous(limits=c(0,1),expand = c(0,0)) +
+#   scale_colour_discrete(name  ="Age",
+#                             labels=c("2", "3", "4", "5", "Adults")) +
+#   theme(legend.position="bottom",
+#         text = element_text(size=14))
+#  theme(
+ #       strip.background = element_rect(colour="white", fill="white"))
+# better with stim at the bottom, like cogsci draft
+
+subsample.hz <- 2 # 10 hz is decent, eventually we should set to 30 or 60 hz
+d_et <- d_et %>%
+  mutate(t.crit.binned = round(t.crit*subsample.hz)/subsample.hz) %>%
+  mutate(t.crit.binned = signif(t.crit.binned, 4))
+
 ms <- d_et %>%
   filter(t.crit > -1 & t.crit <= 3) %>%
+  group_by(expt,trial_type, age_group, t.crit.binned, subid) %>%
+  summarise(correct = mean(correct, na.rm = TRUE)) %>%
   group_by(expt,trial_type, age_group, t.crit.binned) %>%
-  summarise(correct = mean(correct, na.rm = TRUE))
+  multi_boot_standard(column = "correct") %>%
+  mutate(correct = mean)
 levels(ms$expt) <- c("Experiment 1", "Experiment 2")
 
+# et_accuracy <- 
 ggplot(ms, 
        aes(x = t.crit.binned, y = correct, colour = age_group)) +
-  geom_line() +
   facet_grid(expt~trial_type) +
   geom_vline(xintercept=0,lty=3) + 
   geom_vline(xintercept=0.78,lty=3) + 
   geom_hline(yintercept=.50,lty=4) + 
   xlab("Time (s)") + ylab("Proportion looking to target") + 
-  scale_x_continuous(expand = c(0,0)) + 
+  scale_x_continuous(expand = c(0,0), limits=c(-1.2, 3.2)) + 
   scale_y_continuous(limits=c(0,1),expand = c(0,0)) +
   scale_colour_discrete(name  ="Age",
-                            labels=c("2", "3", "4", "5", "Adults"))
-#  theme(
- #       strip.background = element_rect(colour="white", fill="white"))
-# better with stim at the bottom, like cogsci draft
+                            labels=c("2", "3", "4", "5", "Adults")) +   
+  geom_line(position="dodge", stat="identity") + 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
+                  position = position_dodge(width = .15), size=0.4) + 
+  theme(legend.position="bottom",
+        text = element_text(size=14))
+
 ```
 
+
+order effect?
+
+```{r et_order}
+subsample.hz <- 2 # 10 hz is decent, eventually we should set to 30 or 60 hz
+d_et <- d_et %>%
+  mutate(t.crit.binned = round(t.crit*subsample.hz)/subsample.hz) %>%
+  mutate(t.crit.binned = signif(t.crit.binned, 4))
+
+ms <- d_et %>%
+  filter(expt == "3-vs-1") %>%
+  filter(t.crit > -1 & t.crit <= 3) %>%
+  filter(trial_type == "inference") %>%
+  filter(order == "1" | order == "2") %>%
+  group_by(order, age_group, t.crit.binned, subid) %>%
+  summarise(correct = mean(correct, na.rm = TRUE)) %>%
+  group_by(order, age_group, t.crit.binned) %>%
+  multi_boot_standard(column = "correct") %>%
+  mutate(correct = mean)
+levels(ms$expt) <- c("Experiment 1", "Experiment 2")
+
+# et_accuracy <- 
+ggplot(ms, 
+       aes(x = t.crit.binned, y = correct, colour = age_group)) +
+  facet_grid(.~order) +
+  geom_vline(xintercept=0,lty=3) + 
+  geom_vline(xintercept=0.78,lty=3) + 
+  geom_hline(yintercept=.50,lty=4) + 
+  xlab("Time (s)") + ylab("Proportion looking to target") + 
+  scale_x_continuous(expand = c(0,0), limits=c(-1.2, 3.2)) + 
+  scale_y_continuous(limits=c(0,1),expand = c(0,0)) +
+  scale_colour_discrete(name  ="Age",
+                            labels=c("2", "3", "4", "5", "Adults")) +   
+  geom_line(position="dodge", stat="identity") + 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
+                  position = position_dodge(width = .15), size=0.4) + 
+  theme(legend.position="bottom",
+        text = element_text(size=14))
+
+ms <- d_et %>%
+  filter(expt == "2-vs-1") %>%
+  filter(t.crit > -1 & t.crit <= 3) %>%
+  filter(trial_type == "inference") %>%
+  filter(order == "1" | order == "2") %>%
+  mutate(age_group = as.numeric(as.character(age_group))) %>%
+  group_by(order,  age_group, t.crit.binned, subid) %>%
+  summarise(correct = mean(correct, na.rm = TRUE))
+
+summary(lmer(correct ~ order * age_group + (1 | subid), data = ms))
+
+
+```
+
+eye-tracking diff score
+
+```{r et_diff_score}
+## subtract mean looking
+mean_cd <- mean(filter(d_et, 
+                       t.crit > -1 & t.crit <= 0 &
+                         trial_type == "control-double")$correct)
+mean_cd-.5
+mean_inf <- mean(filter(d_et, 
+                       t.crit > -1 & t.crit <= 0 &
+                         trial_type == "inference")$correct)
+.5-mean_inf
+
+ms <- d_et %>%
+  mutate(window = ifelse(t.crit < 0, "early", ifelse(t.crit > .78 & t.crit < 3, "target", "NA"))) %>%
+  filter(window != "NA") %>%
+  group_by(expt,trial_type, window, age_group, subid) %>%
+  summarise(correct = mean(correct, na.rm = TRUE)) %>%
+  spread(window, correct) %>%
+  mutate(diff = target-early) %>%
+  group_by(expt,trial_type, age_group) %>%
+  multi_boot_standard(column = "diff") %>%
+  mutate(diff = mean)
+levels(ms$expt) <- c("Experiment 1", "Experiment 2")
+
+# et_accuracy <- 
+ggplot(subset(ms, age_group != "adult"), 
+       aes(x = age_group, y = diff, fill = age_group)) +
+  facet_grid(expt~trial_type) +
+  geom_hline(yintercept=0,lty=4) + 
+  xlab(NULL) + 
+  ylab("Increase in look to target from baseline (%)") + 
+  scale_y_continuous(limits=c(-0.2,0.5),expand = c(0,0)) +
+  scale_fill_discrete(name  ="Age (years)",
+                            labels=c("2", "3", "4", "5", "Adults")) +   
+  geom_bar(position="dodge", stat="identity") + 
+  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), 
+                  width=0.2, size=0.2) + 
+  theme(legend.position="bottom",
+        text = element_text(size=14))
+```
+
+
+
 ```{r et_itemnum, echo=FALSE, message=FALSE, fig.width = 7, fig.height = 5.5, fig.align='center', fig.cap='eye-tracking: comparing experiments'}
-# compare 2-vs-1 vs. 3-vs-1
+## subsample the data so that you get smooth curves***
+subsample.hz <- 30 
+d_et <- d_et %>%
+  mutate(t.crit.binned = round(t.crit*subsample.hz)/subsample.hz) %>%
+  mutate(t.crit.binned = signif(t.crit.binned, 4))
+
+# compare 2-vs-1 vs. 3-vs-1ms <- d_et %>%
+ms <- d_et %>%
+  filter(t.crit > -1 & t.crit <= 3) %>%
+  group_by(expt, trial_type, age_group, t.crit.binned) %>%
+  summarise(correct = mean(correct, na.rm = TRUE))
+levels(ms$expt) <- c("Experiment 1", "Experiment 2")
+
 levels(ms$age_group) <- c("2-year-olds", "3-year-olds", "4-year-olds", "5-year-olds", "Adults")
-ggplot(subset(ms, age_group != "Adults" & trial_type == "inference"), 
+ggplot(subset(ms, age_group != "Adults"), 
        aes(x = t.crit.binned, y = correct, colour = expt)) +
   geom_line() +
   facet_grid(.~age_group) +
@@ -239,7 +496,7 @@ levels(ms$expt) <- c("Experiment 1", "Experiment 2")
 ggplot(ms, 
        aes(fill=window, y=mean, x=window)) +
   geom_bar(position="dodge", stat="identity") + 
-  facet_grid(age_group~expt) +
+  facet_grid(expt~age_group) +
   ylab("Proportion correct looking") + 
   guides(fill=guide_legend(title=NULL)) +
   geom_hline(yintercept=.50,lty=4) + 
@@ -268,17 +525,29 @@ et_rt_ms <- et_rts %>%
   mutate(rt = mean)
 
 levels(et_rt_ms$expt) <- c("Experiment 1", "Experiment 2")
+# et_rt <- 
 ggplot(et_rt_ms, aes(x = age_group, y = rt, group = trial_type, col = trial_type, label = trial_type)) + 
   geom_line() + 
   geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
                   position = position_dodge(width = .1)) + 
-  facet_grid(. ~ expt) +
+  facet_grid(expt ~ .) +
   scale_colour_discrete(labels = c("control-double", "control-single", "inference")) +
   guides(colour=guide_legend(title="Trial type")) +
   ylab("Reaction time (s)") +
   xlab("Age (years)")
   
+et_rt <- 
+ggplot(et_rt_ms, aes(x = age_group, y = rt, group = expt, col = expt, label = expt)) + 
+  geom_line() + 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
+                  position = position_dodge(width = .1)) + 
+  facet_grid( ~ trial_type) +
+  scale_colour_discrete(labels = c(" Expt 1", " Expt 2")) +
+  guides(colour=guide_legend(title=NULL)) +
+  ylab("Reaction time (s)") +
+  xlab("Age (years)")
 
+multiplot(et_accuracy, et_rt, cols=1, heights = c(5,2))
   # geom_dl(aes(label=trial_type) ,method="smart.grid")
 
   #  geom_text(check_overlap=TRUE)
@@ -293,6 +562,11 @@ ggplot(et_rt_ms, aes(x = age_group, y = rt, group = trial_type, col = trial_type
 ```
 
 ```{r et_onsetcont, echo=FALSE, message=FALSE, fig.width = 7, fig.height = 3, fig.align='center', fig.cap='eye-tracking onset contingent analysis'}
+subsample.hz <- 30 # 10 hz is decent, eventually we should set to 30 or 60 hz
+d_et <- d_et %>%
+  mutate(t.crit.binned = round(t.crit*subsample.hz)/subsample.hz) %>%
+  mutate(t.crit.binned = signif(t.crit.binned, 4))
+
 ms <- d_et %>% 
   filter(age_group != "adult") %>%
   filter(trial_type == "inference") %>%
@@ -306,12 +580,15 @@ ms <- d_et %>%
          age_group = factor(age_group, levels = c("2","3","4", "5", "adult")))
 
 levels(ms$targetAtOnset) <- c("distractor first", "target first")
+ms$targetAtOnset <- relevel(ms$targetAtOnset, ref="target first")
 levels(ms$age_group) <- c("2-year-olds", "3-year-olds", "4-year-olds", "5-year-olds", "adult")
 levels(ms$expt) <- c("Experiment 1", "Experiment 2")
 
 ggplot(ms, 
       aes(x = t.crit.binned, y = correct, colour = targetAtOnset)) +
   geom_line() +
+#   geom_ribbon(ymax = filter(ms, targetAtOnset == "distractor first")$correct,
+#               ymin = filter(ms, targetAtOnset == "target first")$correct) +
   facet_grid(expt~age_group) + 
   scale_fill_brewer(palette="Set1") +
   guides(colour=guide_legend(title=NULL)) +
@@ -321,7 +598,10 @@ ggplot(ms,
   scale_y_continuous(expand = c(0, 0), limits=c(0,20)) + 
   xlab("Time (s)") + ylab("Proportion switching") + 
   scale_x_continuous(limits=c(0,2.9),expand = c(0,0)) + 
-  scale_y_continuous(limits=c(0,1),expand = c(0,0)) # make the axes start at 0
+  scale_y_continuous(limits=c(0,1),expand = c(0,0)) + # make the axes start at 0
+  theme(legend.position="bottom",
+        text = element_text(size=14))
+
 ```
 
 ```{r etipad_datamunging, include=FALSE}
@@ -356,9 +636,13 @@ d_comp <- rbind(d_et_comp, d_ip_comp)
 ## ipad
 
 ```{r ipad, ipad_accuracy_graph, echo=FALSE, message=FALSE, fig.width = 7, fig.height = 5, fig.align='center', fig.cap='iPad accuracy and rt'}
+d_ip <- d_ip %>%
+  mutate(correct = as.factor(correct))
+levels(d_ip$correct) <- c(0,1)
+d_ip$correct <- as.numeric(as.character(d_ip$correct))
 ms <- d_ip %>%
   group_by(age_group, trial_type, item_rel, subid) %>%
-  summarize(correct = mean(correct, na.rm=TRUE)) %>%
+  summarize(correct = mean(correct)) %>%
   group_by(age_group, trial_type, item_rel) %>%
   multi_boot_standard(column = "correct") %>%
   mutate(correct = mean)
@@ -368,18 +652,23 @@ p1 <- ggplot(ms, aes(x = age_group, y = correct, group = item_rel, col = item_re
   geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
                   position = position_dodge(width = .1)) + 
   facet_grid(. ~ trial_type) +
-  guides(colour=guide_legend(title="Number of features")) +
+#   guides(colour=guide_legend(title="Number of features")) +
+  guides(colour=FALSE) +
   geom_hline(yintercept=.50,lty=4) +
   ylab("Accuracy") +
-  xlab("Age") +
-  ylim(c(0, 1))
+  xlab("Age (years)") +
+  ylim(c(0, 1)) +
+  theme(legend.position="bottom",
+        text = element_text(size=14))
+
 
 ip_rt_ms <- d_ip %>%
+  filter(correct == "1") %>%
   group_by(trial_type, item_rel, age_group, subid) %>%
   summarise(rt = mean(rt)) %>%
   group_by(trial_type, item_rel, age_group) %>%
   multi_boot_standard(column = "rt") %>%
-  mutate(rt = mean) +
+  mutate(rt = mean)
   
 
 p2 <- ggplot(ip_rt_ms, aes(x = age_group, y = rt, group = item_rel, col = item_rel)) + 
@@ -387,21 +676,407 @@ p2 <- ggplot(ip_rt_ms, aes(x = age_group, y = rt, group = item_rel, col = item_r
   geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
                   position = position_dodge(width = .1)) + 
   facet_grid(. ~ trial_type) +
-  ylab("Reaction time (s)") +
-  xlab("Age") +
-  guides(colour=guide_legend(title="Number of features"))
+  ylab("Reaction time (ms)") +
+  xlab("Age (years)") +
+#   guides(colour=guide_legend(title="Number of features")) +
+  guides(colour=FALSE) +
+  theme(legend.position="bottom",
+        text = element_text(size=14))
+
 
 
 multiplot(p1, p2, cols=1)
 ```
 
+```{r}
+# redo psych::alpha
+
+alpha_nopca <- function (x, keys = NULL, cumulative = FALSE, 
+                         title = NULL, max = 10, 
+    na.rm = TRUE, check.keys = FALSE, n.iter = 1, delete = TRUE, 
+    use = "pairwise") 
+{
+  
+    alpha.1 <- function(C, R) {
+        n <- dim(C)[2]
+        alpha.raw <- (1 - tr(C)/sum(C)) * (n/(n - 1))
+        alpha.std <- (1 - n/sum(R)) * (n/(n - 1))
+        smc.R <- smc(R)
+        G6 <- (1 - (n - sum(smc.R))/sum(R))
+        av.r <- (sum(R) - n)/(n * (n - 1))
+        sn <- n * av.r/(1 - av.r)
+        Q = (2 * n^2/((n - 1)^2 * (sum(C)^3))) * (sum(C) * (tr(C^2) + 
+            (tr(C))^2) - 2 * (tr(C) * sum(C^2)))
+        result <- list(raw = alpha.raw, std = alpha.std, G6 = G6, 
+            av.r = av.r, sn = sn, Q = Q)
+        return(result)
+    }
+    
+    cl <- match.call()
+    if (!is.matrix(x) && !is.data.frame(x)) 
+        stop("Data must either be a data frame or a matrix")
+    nvar <- dim(x)[2]
+    nsub <- dim(x)[1]
+    scores <- NULL
+    response.freq <- NULL
+    if (nsub != nvar) {
+        item.var <- apply(x, 2, sd, na.rm = na.rm)
+        bad <- which((item.var <= 0) | is.na(item.var))
+        if ((length(bad) > 0) && delete) {
+            for (baddy in 1:length(bad)) {
+                warning("Item = ", colnames(x)[bad][baddy], " had no variance and was deleted")
+            }
+            x <- x[, -bad]
+            nvar <- nvar - length(bad)
+        }
+        response.freq <- response.frequencies(x, max = max)
+        C <- cov(x, use = use)
+    }
+    else {
+        C <- x
+    }
+    
+    if (is.null(keys)) {
+        keys <- rep(1, nvar)
+    }
+    else {
+        keys <- as.vector(keys)
+        if (length(keys) < nvar) {
+            temp <- keys
+            keys <- rep(1, nvar)
+            names(keys) <- colnames(x)
+            keys[temp] <- -1
+        }
+    }
+    key.d <- diag(keys)
+    C <- key.d %*% C %*% key.d
+    signkey <- strtrim(keys, 1)
+    signkey[signkey == "1"] <- ""
+    colnames(x) <- paste(colnames(x), signkey, sep = "")
+    if (nsub != nvar) {
+        if (any(keys < 0)) {
+            min.item <- min(x, na.rm = na.rm)
+            max.item <- max(x, na.rm = na.rm)
+            adjust <- max.item + min.item
+            flip.these <- which(keys < 0)
+            x[, flip.these] <- adjust - x[, flip.these]
+        }
+        if (cumulative) {
+            total <- rowSums(x, na.rm = na.rm)
+        }
+        else {
+            total <- rowMeans(x, na.rm = na.rm)
+        }
+        mean.t <- mean(total, na.rm = na.rm)
+        sdev <- sd(total, na.rm = na.rm)
+        raw.r <- cor(total, x, use = use)
+        t.valid <- colSums(!is.na(x))
+    }
+    else {
+        total <- NULL
+        totals <- TRUE
+    }
+    R <- cov2cor(C)
+    drop.item <- vector("list", nvar)
+    alpha.total <- alpha.1(C, R)
+    if (nvar > 2) {
+        for (i in 1:nvar) {
+            drop.item[[i]] <- alpha.1(C[-i, -i, drop = FALSE], 
+                R[-i, -i, drop = FALSE])
+        }
+    }
+    else {
+        drop.item[[1]] <- drop.item[[2]] <- c(rep(R[1, 2], 2), 
+            smc(R)[1], R[1, 2], NA, NA)
+    }
+    by.item <- data.frame(matrix(unlist(drop.item), ncol = 6, 
+        byrow = TRUE))
+    if (nsub > nvar) {
+        by.item[6] <- sqrt(by.item[6]/nsub)
+        colnames(by.item) <- c("raw_alpha", "std.alpha", "G6(smc)", 
+            "average_r", "S/N", "alpha se")
+    }
+    else {
+        by.item <- by.item[-6]
+        colnames(by.item) <- c("raw_alpha", "std.alpha", "G6(smc)", 
+            "average_r", "S/N")
+    }
+    rownames(by.item) <- colnames(x)
+    Vt <- sum(R)
+    item.r <- colSums(R)/sqrt(Vt)
+    RC <- R
+    diag(RC) <- smc(R)
+    Vtc <- sum(RC)
+    item.rc <- colSums(RC)/sqrt(Vtc)
+    if (nvar > 1) {
+        r.drop <- rep(0, nvar)
+        for (i in 1:nvar) {
+            v.drop <- sum(C[-i, -i, drop = FALSE])
+            c.drop <- sum(C[, i]) - C[i, i]
+            r.drop[i] <- c.drop/sqrt(C[i, i] * v.drop)
+        }
+    }
+    item.means <- colMeans(x, na.rm = na.rm)
+    item.sd <- apply(x, 2, sd, na.rm = na.rm)
+    if (nsub > nvar) {
+        ase = sqrt(alpha.total$Q/nsub)
+        alpha.total <- data.frame(alpha.total[1:5], ase = ase, 
+            mean = mean.t, sd = sdev)
+        colnames(alpha.total) <- c("raw_alpha", "std.alpha", 
+            "G6(smc)", "average_r", "S/N", "ase", "mean", "sd")
+        rownames(alpha.total) <- ""
+        stats <- data.frame(n = t.valid, raw.r = t(raw.r), std.r = item.r, 
+            r.cor = item.rc, r.drop = r.drop, mean = item.means, 
+            sd = item.sd)
+    }
+    else {
+        alpha.total <- data.frame(alpha.total[-6])
+        colnames(alpha.total) <- c("raw_alpha", "std.alpha", 
+            "G6(smc)", "average_r", "S/N")
+        rownames(alpha.total) <- ""
+        stats <- data.frame(r = item.r, r.cor = item.rc, r.drop = r.drop)
+    }
+    rownames(stats) <- colnames(x)
+    if (n.iter > 1) {
+        if (nsub == nvar) {
+            message("bootstrapped confidence intervals require raw data")
+            boot <- NULL
+            boot.ci <- NULL
+        }
+        else {
+            boot <- vector("list", n.iter)
+            boot <- mclapply(1:n.iter, function(XX) {
+                xi <- x[sample.int(nsub, replace = TRUE), ]
+                C <- cov(xi, use = "pairwise")
+                if (!is.null(keys)) {
+                  key.d <- diag(keys)
+                  xi <- key.d %*% C %*% key.d
+                }
+                R <- cov2cor(C)
+                alpha.1(C, R)
+            })
+            boot <- matrix(unlist(boot), ncol = 6, byrow = TRUE)
+            colnames(boot) <- c("raw_alpha", "std.alpha", "G6(smc)", 
+                "average_r", "s/n", "ase")
+            boot.ci <- quantile(boot[, 1], c(0.025, 0.5, 0.975))
+        }
+    }
+    else {
+        boot = NULL
+        boot.ci <- NULL
+    }
+    result <- list(total = alpha.total, alpha.drop = by.item, 
+        item.stats = stats, response.freq = response.freq, keys = keys, 
+        scores = total, nvar = nvar, boot.ci = boot.ci, boot = boot, 
+        call = cl, title = title)
+    class(result) <- c("psych", "alpha")
+    return(result)
+}
+```
+
+```{r cronbach_alpha}
+get.frame <- function(x) {
+  x <- as.data.frame(x)
+  non.null.cols <- apply(x, 2, function(x) {!all(is.na(x))})
+  x <- x[, non.null.cols]
+  return(x)
+}
+
+# # eye-tracking accuracy alpha
+# et.acc.alphas <- d_et %>%
+#   filter(age_group!="adult") %>%
+#   filter(t.crit >.78 & t.crit < 3) %>%
+#   filter(trial_type != "inference") %>%
+#   mutate(trial_num = as.numeric(as.character(trial_num))) %>%
+#   group_by(subid, expt, age_group, trial_num) %>%
+#   summarise(correct = mean(correct)) %>%
+#   select(subid, expt, age_group, trial_num, correct) %>%
+#   group_by(expt, age_group, subid) %>%
+#   arrange(subid, trial_num) %>%
+#   mutate(trial_order = str_c("t",as.character(1:length(trial_num))), 
+#          n = length(trial_num)) %>%
+#   select(-trial_num) %>%
+#   spread(trial_order, correct) %>%
+#   group_by(expt, age_group, add=FALSE) %>%
+#   summarise(n = mean(n), 
+#             raw.alpha = alpha_nopca(get.frame(cbind(t1, t2, t3, t4, t5, t6, 
+#                                               t7, t8, t9, t10, t11, t12
+#                                               # t13, t14, t15, t16 
+#                                               )), 
+#                               na.rm=TRUE, delete=TRUE, 
+#                               check.keys=FALSE)$total$raw_alpha, 
+#             std.alpha = alpha_nopca(get.frame(cbind(t1, t2, t3, t4, t5, t6, 
+#                                                     t7, t8, t9, t10, t11, t12
+#                                               # t13, t14, t15, t16
+#                                                     )), 
+#                               na.rm=TRUE, delete=TRUE, 
+#                               check.keys=FALSE)$total$std.alpha)
+
+# eye-tracking accuracy alpha
+et.acc.alphas <- d_et %>%
+  filter(age_group!="adult") %>%
+  filter(t.crit >.78 & t.crit < 3) %>%
+  filter(trial_type != "inference") %>%
+  mutate(trial_num = as.numeric(as.character(trial_num))) %>%
+  group_by(subid, age_group, trial_num) %>%
+  summarise(correct = mean(correct)) %>%
+  select(subid, age_group, trial_num, correct) %>%
+  group_by(age_group, subid) %>%
+  arrange(subid, trial_num) %>%
+  mutate(trial_order = str_c("t",as.character(1:length(trial_num))), 
+         n = length(trial_num)) %>%
+  select(-trial_num) %>%
+  spread(trial_order, correct) %>%
+  group_by(age_group, add=FALSE) %>%
+  summarise(n = mean(n), 
+            raw.alpha = alpha_nopca(get.frame(cbind(t1, t2, t3, t4, t5, t6, 
+                                              t7, t8, t9, t10, t11, t12
+                                              # t13, t14, t15, t16 
+                                              )), 
+                              na.rm=TRUE, delete=TRUE, 
+                              check.keys=FALSE)$total$raw_alpha, 
+            std.alpha = alpha_nopca(get.frame(cbind(t1, t2, t3, t4, t5, t6, 
+                                                    t7, t8, t9, t10, t11, t12
+                                              # t13, t14, t15, t16
+                                                    )), 
+                              na.rm=TRUE, delete=TRUE, 
+                              check.keys=FALSE)$total$std.alpha)
+
+# eye-tracking rt alpha
+# et_rt_ms <- et_rts %>%
+#   filter(age_group != "adult") %>%
+#   filter(trial_type != "inference") %>%
+#   group_by(expt, trial_num, age_group, subid) %>%
+#   summarise(rt = mean(rt)) %>%
+#   ungroup()
+# 
+# et.rt.alphas <- et_rt_ms %>%
+#   mutate(trial_num = as.numeric(as.character(trial_num))) %>%
+#   group_by(expt, subid, age_group, trial_num) %>% # grouping by expt causes a weird error
+#   summarise(rt = 1000* mean(rt, na.rm = TRUE)) %>%
+#   select(subid,expt, age_group, trial_num, rt) %>%
+#   group_by(expt,age_group, subid) %>%
+#   arrange(subid, trial_num) %>%
+#   mutate(trial_order = str_c("t",as.character(1:length(trial_num))), 
+#          n = length(trial_num)) %>%
+#   select(-trial_num) %>%
+#   spread(trial_order, rt) %>%
+#   group_by(expt, age_group, add=FALSE) %>%
+#   summarise(n = mean(n), 
+#             raw.alpha = alpha_nopca(get.frame(cbind(t1, t2, t3, t4, t5, t6, 
+#                                               t7, t8
+#                                               )), 
+#                               na.rm=TRUE, delete=TRUE, 
+#                               check.keys=FALSE)$total$raw_alpha, 
+#             std.alpha = alpha_nopca(get.frame(cbind(t1, t2, t3, t4, t5, t6, 
+#                                                     t7, t8
+#                                                     )), 
+#                               na.rm=TRUE, delete=TRUE, 
+#                               check.keys=FALSE)$total$std.alpha)
+
+# eye-tracking rt alpha
+et_rt_ms <- et_rts %>%
+  filter(age_group != "adult") %>%
+  filter(trial_type != "inference") %>%
+  group_by(trial_num, age_group, subid) %>%
+  summarise(rt = mean(rt)) %>%
+  ungroup()
+
+et.rt.alphas <- et_rt_ms %>%
+  mutate(trial_num = as.numeric(as.character(trial_num))) %>%
+  group_by(subid, age_group, trial_num) %>% # grouping by expt causes a weird error
+  summarise(rt = mean(rt)) %>%
+  select(subid, age_group, trial_num, rt) %>%
+  group_by(age_group, subid) %>%
+  arrange(subid, trial_num) %>%
+  mutate(trial_order = str_c("t",as.character(1:length(trial_num))), 
+         n = length(trial_num)) %>%
+  select(-trial_num) %>%
+  spread(trial_order, rt) %>%
+  group_by(age_group, add=FALSE) %>%
+  summarise(n = mean(n), 
+            raw.alpha = alpha_nopca(get.frame(cbind(t1, t2, t3, t4, t5, t6, 
+                                              t7, t8
+                                              # , t9, t10, t11, t12
+                                              )), 
+                              na.rm=TRUE, delete=TRUE, 
+                              check.keys=FALSE)$total$raw_alpha, 
+            std.alpha = alpha_nopca(get.frame(cbind(t1, t2, t3, t4, t5, t6, 
+                                                    t7, t8
+                                                    # , t9, t10, t11, t12
+                                                    )), 
+                              na.rm=TRUE, delete=TRUE, 
+                              check.keys=FALSE)$total$std.alpha)
+
+# tablet accuracy alpha
+ip.acc.alphas <- d_ip %>%
+  filter(trial_type != "inference") %>%
+  mutate(trial_num = as.numeric(as.character(trial_num)) - 2) %>%
+  select(subid, age_group, trial_num, correct) %>%
+  group_by(age_group, subid) %>%
+  arrange(subid, trial_num) %>%
+  mutate(trial_order = str_c("t",as.character(1:length(trial_num))), 
+         n = length(trial_num)) %>%
+  select(-trial_num) %>%
+  spread(trial_order, correct) %>%
+  group_by(age_group, add=FALSE) %>%
+  summarise(n = mean(n), 
+            raw.alpha = alpha_nopca(get.frame(cbind(t1, t2, t3, t4, t5, t6, 
+                                              t7, t8, t9, t10, t11, t12
+                                              # t13, t14, t15, t16
+                                              )), 
+                              na.rm=TRUE, delete=TRUE, 
+                              check.keys=FALSE)$total$raw_alpha, 
+            std.alpha = alpha_nopca(get.frame(cbind(t1, t2, t3, t4, t5, t6, 
+                                                    t7, t8, t9, t10, t11, t12
+                                                    # t13, t14, t15, t16
+                                                    )), 
+                              na.rm=TRUE, delete=TRUE, 
+                              check.keys=FALSE)$total$std.alpha)
+
+
+# tablet rt alpha
+ip.rt.alphas <- d_ip %>%
+  filter(trial_type != "inference") %>%
+  mutate(trial_num = as.numeric(as.character(trial_num))) %>%
+  group_by(subid, age_group, trial_num) %>%
+  summarise(rt = mean(rt, na.rm = TRUE)) %>%
+  select(subid, age_group, trial_num, rt) %>%
+  group_by(age_group, subid) %>%
+  arrange(subid, trial_num) %>%
+  mutate(trial_order = str_c("t",as.character(1:length(trial_num))), 
+         n = length(trial_num)) %>%
+  select(-trial_num) %>%
+  spread(trial_order, rt) %>%
+  group_by(age_group, add=FALSE) %>%
+  summarise(n = mean(n), 
+            raw.alpha = alpha_nopca(get.frame(cbind(t1, t2, t3, t4, t5, t6, 
+                                              t7, t8, t9, t10, t11, t12
+                                              # t13, t14, t15, t16
+                                              )), 
+                              na.rm=TRUE, delete=TRUE, 
+                              check.keys=FALSE)$total$raw_alpha, 
+            std.alpha = alpha_nopca(get.frame(cbind(t1, t2, t3, t4, t5, t6, 
+                                                    t7, t8, t9, t10, t11, t12
+                                                    # t13, t14, t15, t16
+                                                    )), 
+                              na.rm=TRUE, delete=TRUE, 
+                              check.keys=FALSE)$total$std.alpha)
+et.acc.alphas
+et.rt.alphas
+ip.acc.alphas
+ip.rt.alphas
+```
 
 ### accuracy 
 
 ```{r etipad_accuracy, echo=FALSE, message=FALSE, fig.width = 7, fig.height = 5, fig.align='center', fig.cap='eye-tracking vs. iPad: accuracy'}
+d_comp <- d_comp %>% 
+  mutate(expt = as.factor(expt))
 ms <-  d_comp %>%
-  filter(age_group != "adult",
-         age_group != "2") %>%
+  filter(age_group != "adult"
+         # age_group != "2"
+         ) %>%
   filter(trial_type != "control-single") %>%
   group_by(expt, age_group, item_num, trial_type) %>%
   multi_boot_standard(column = "correct") %>%
@@ -409,24 +1084,35 @@ ms <-  d_comp %>%
 
 # bar graph
 ggplot(ms, 
-       aes(fill=item_num, y=correct, x=age_group)) +
-  geom_bar(position="dodge", stat="identity") + 
+       aes(group=item_num,col=item_num, y=correct, x=age_group)) +
+  # geom_bar(position="dodge", stat="identity") + 
+  geom_line(position="dodge", stat="identity") + 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
+                  position = position_dodge(width = .1)) + 
   facet_grid(trial_type~expt) +
-  ylab("Proportion correct looking") + 
+  ylab("Proportion correct") + 
   guides(fill=guide_legend(title=NULL)) +
   geom_hline(yintercept=.50,lty=4) + 
-  geom_errorbar(aes(ymin=ci_lower,ymax=ci_upper,width=.2),position=position_dodge(width = 0.90)) +
+  # geom_errorbar(aes(ymin=ci_lower,ymax=ci_upper,width=.2),position=position_dodge(width = 0.90)) +
   xlab("Age (years)") +
   ggtitle("Eye-tracking vs. iPad: Accuracy")
-  
+
+
+
 ```
 
 ### rt
 
 ```{r etipad_rt, echo=FALSE, message=FALSE, fig.width = 7, fig.height = 4, fig.align='center', fig.cap='eye-tracking vs. iPad: rt'}
-et_rt_ms <- et_rt_ms %>%
+et_rt_ms <- et_rts %>%
+  filter(age_group != "adult") %>%
+  group_by(trial_type, expt, age_group, subid) %>%
+  summarise(rt = mean(rt)) %>%
+  group_by(trial_type, expt, age_group) %>%
+  multi_boot_standard(column = "rt") %>%
+  mutate(rt = mean)
   ungroup() %>%
-  mutate(item_num = expt,
+  mutate(item_num = factor(expt, labels=c("2-vs-1", "3-vs-1")),
          experiment = "eye-tracking") %>%
   select(experiment, age_group, trial_type, item_num, rt, ci_lower, ci_upper)
 
@@ -445,13 +1131,111 @@ ip_rt_ms <- d_ip %>%
 
 rt_ms <- rbind(et_rt_ms, ip_rt_ms)
 
-ggplot(subset(rt_ms, trial_type != "control-single" & age_group != "2" & age_group != "adult"), 
-       aes(x = age_group, y = rt, group = trial_type, col = trial_type)) + 
+ggplot(subset(rt_ms, trial_type != "control-single" & age_group != "adult"), 
+       aes(x = age_group, y = rt, group = item_num, col = item_num)) + 
   geom_line() + 
   geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
                   position = position_dodge(width = .1)) + 
-  facet_grid(experiment ~ item_num) +
-  scale_colour_discrete(labels = c("control-double", "inference"))
+  facet_grid(experiment~trial_type,scales="free") +
+  scale_colour_discrete(labels = c("control-double", "inference")) +
+  ylab("Reaction time (s)") +
+  xlab("Age group (years)")
+
+
+```
+
+```{r etipad_comp}
+ms <-  d_comp %>%
+  filter(age_group != "adult"
+         # age_group != "2"
+         ) %>%
+  filter(trial_type != "control-single") %>%
+  group_by(expt, item_num, age_group, trial_type) %>%
+  multi_boot_standard(column = "correct") %>%
+  mutate(correct = mean)
+
+accuracy_comp <- ggplot(ms,
+       aes(y=correct, x=age_group, col=expt, linetype=item_num, shape=item_num)) +
+  # geom_bar(position="dodge", stat="identity") + 
+  geom_line(aes(group = interaction(expt, item_num)), position="dodge", stat="identity") + 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
+                  position = position_dodge(width = .15)) + 
+  facet_grid(.~trial_type) +
+  ylab("Accuracy") + 
+#   guides(colour=FALSE,
+#          linetype=FALSE) +
+  geom_hline(yintercept=.50,lty=4) + 
+  # geom_errorbar(aes(ymin=ci_lower,ymax=ci_upper,width=.2),position=position_dodge(width = 0.90)) +
+  xlab("Age (years)") +
+  # ggtitle("Eye-tracking vs. iPad: Accuracy")
+  theme(legend.position="bottom",
+        text = element_text(size=14))
+
+
+# rt comparison 
+et_rt_ms <- et_rts %>%
+  filter(age_group != "adult") %>%
+  mutate(item_num = expt) %>%
+  group_by(trial_type, item_num, age_group, subid) %>%
+  summarise(rt = mean(rt)) %>%
+  group_by(trial_type, item_num, age_group) %>%
+  multi_boot_standard(column = "rt") %>%
+  mutate(rt = mean) %>%
+  ungroup() %>%
+  mutate(
+         experiment = "eye-tracking") %>%
+  select(experiment, item_num, age_group, trial_type, rt, ci_lower, ci_upper)
+
+ip_rt_ms <- d_ip %>%
+  mutate(item_num = ifelse(item_num == "2vs1", "2-vs-1", "3-vs-1")) %>%
+  group_by(trial_type, item_num, age_group, subid) %>%
+  summarise(rt = mean(rt)) %>%
+  group_by(trial_type, item_num, age_group) %>%
+  multi_boot_standard(column = "rt") %>%
+  mutate(rt = mean) %>%
+  select(age_group, item_num, trial_type, rt, ci_lower, ci_upper) %>%
+  mutate(experiment = "iPad") %>%
+  mutate(rt = rt/1000,
+         ci_lower = ci_lower/1000,
+         ci_upper = ci_upper/1000)
+
+rt_ms <- rbind(et_rt_ms, ip_rt_ms)
+
+rt_comp <- ggplot(filter(rt_ms, trial_type != "control-single"),
+       aes(y=rt, x=age_group, col=experiment, linetype=item_num, shape=item_num)) +
+  # geom_bar(position="dodge", stat="identity") + 
+  geom_line(aes(group = interaction(experiment, item_num)), position="dodge", stat="identity") + 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
+                  position = position_dodge(width = .15)) + 
+  facet_grid(.~trial_type,scales="free") +
+  scale_colour_discrete(labels = c("eye-tracking", "tablet")) +
+  ylab("Reaction time (s)") +
+  xlab("Age (years)") +
+#   guides(colour=guide_legend(title=NULL),
+#          linetype=guide_legend(title=NULL)) +
+#   guides(colour=FALSE,
+#          linetype=FALSE) +
+  theme(legend.position="bottom",
+        text = element_text(size=14))
+
+multiplot(accuracy_comp, rt_comp, cols=2)
+
 ```
 
 
+```{r subject_count}
+
+subj <- d_ip %>%
+    group_by(subid, age_group, expt) %>%
+    summarise(nrow=n()) %>%
+    group_by(age_group, expt) %>%
+    summarise(nrow=n())
+subj
+
+subj <- d_et %>%
+    group_by(subid, age_group, expt) %>%
+    summarise(nrow=n()) %>%
+    group_by(expt, age_group) %>%
+    summarise(nrow=n())
+subj
+```
