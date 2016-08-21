@@ -389,7 +389,7 @@ expt2.ttest.acc.5y.p = round(expt2.ttest.acc.5y$p.value, 3)
 
 ### Accuracy
 
-As in Experiment 1A, children of all age groups identified the target in both types of control trials (Figure 1). However, there was no evidence of performance above or below chance for any of the age groups in inference trials (4-year-olds: $t$: $t$(`r expt2.ttest.acc.4y.df`) = `r expt2.ttest.acc.4y.t`, $p$ =`r expt2.ttest.acc.4y.p`; 5-year-olds: $t$: $t$(`r expt2.ttest.acc.5y.df`) = `r expt2.ttest.acc.5y.t`, $p$ =`r expt2.ttest.acc.5y.p`).
+As in Experiment 1A, children of all age groups identified the target in both types of control trials (Figure 1). There was limited evidence that older children made implicatures in the inference trials, but not younger children (4-year-olds: $t$: $t$(`r expt2.ttest.acc.4y.df`) = `r expt2.ttest.acc.4y.t`, $p$ =`r expt2.ttest.acc.4y.p`; 2-year-olds: $t$: $t$(`r expt2.ttest.acc.2y.df`) = `r expt2.ttest.acc.2y.t`, $p$ =`r expt2.ttest.acc.2y.p`).
 
 A linear mixed-effects model predicting accuracy based on age and trial type in Experiment 1B showed a significant main effect of trial type ($\beta$ = `r expt2.acc.inf.beta`, $p <.001$), such that looking at target was lower in inference trials than in control trials. There was no significant main effect of age or interaction between age and trial type (largest $\beta$ = `r expt2.acc.inf.beta`, $p >.19$). Thus, there was no improvement in looking to the correct target with age increase. As in Experiment 1A, there was no order effect (largest $\beta$ = 0.09, $p >.05$).
 
@@ -590,7 +590,7 @@ expt3.acc.int2.beta <- round(summary(expt3.acc.lmer)$coef[12], 2)
 ```
 
 ### Accuracy
-As in Experiment 1A and 1B, children across all ages were able to identify the target in control trials. In inference trials, all age groups showed higher accuracy than in eye-tracking (Figure 3). 4- and 5-year-olds’ performances were nearly at ceiling, and even 3-year-olds chose the inferential target above chance ($t$(`r expt3.ttest.acc.3y.df`) = `r expt3.ttest.acc.3y.t`, $p$ < 0.001). 2-year-olds’ performance did not differ from chance ($t$(`r expt3.ttest.acc.2y.df`) = `r expt3.ttest.acc.2y.t`, $p$ =`r expt3.ttest.acc.2y.p`). 
+As in Experiment 1A and 1B, children across all ages were able to identify the target in control trials. In inference trials, all age groups showed higher accuracy than in eye-tracking (Figure 3). 4- and 5-year-olds’ performances were nearly at ceiling, and even 3-year-olds chose the inferential target above chance ($t$(`r expt3.ttest.acc.3y.df`) = `r expt3.ttest.acc.3y.t`, $p$ < 0.001). 2-year-olds’ performance did not differ from chance ($t$(`r expt3.ttest.acc.2y.df`) = `r expt3.ttest.acc.2y.t`, $p$ > .39). 
 
 A linear mixed-effects model predicting accuracy based on age, trial type and number of features (salience contrast; 2-vs-1 vs. 3-vs-1) showed a significant negative interaction of inference trial and 3-vs-1 ($\beta$ = `r expt3.acc.int1.beta`, $p = .036$). Thus, unlike control trials in which children’s performances did not differ by salience contrast, inference trials showed lower accuracy overall than 2-vs-1. This result was in support of our initial hypothesis that salience contrast may lead to greater struggle with the implicature task due to a higher demand for inhibiting response to distractor with greater salience. 
 
