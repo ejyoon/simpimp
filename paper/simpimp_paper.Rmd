@@ -10,14 +10,18 @@ document-params: "a4paper,man,apacite,floatsintext"
 bib-tex: "simpimp.bib"
 
 author-information:
-    - \author{Date of submission:}
+    - \author{Erica J. Yoon, Michael C. Frank}
 
 affiliation-information:
     # Single affiliation
-    - \affiliation{September 9, 2016}
+    - \affiliation{Department of Psychology, Stanford University}
 
 author-note:
-    "No author note provided for anonymous review process."
+    "Draft version 9/9/16. This paper has not been peer reviewed. Please do not copy or cite without author's permission. \\
+
+    We would like to acknowledge Asher Kaye and Stephanie Hsiang for their assistance in data collection, and thank the staff and families at Children's Discovery Museum of San Jose and Bing Nursery School. \\
+
+    Address all correspondence to Erica J. Yoon, Stanford University, Department of Psychology, Jordan Hall, 450 Serra Mall (Bldg. 420), Stanford, CA, 94305. E-mail: ejyoon@stanford.edu."
 
 abstract: 
     "Language comprehension often requires making *implicatures*: for example, inferring that “I ate some of the cookies” implies the speaker ate some *but not all* (scalar implicatures); and “I ate the chocolate-chip cookies” where there are both chocolate chip cookies and raisin cookies in the context implies that the speaker ate the chocolate chip, *but not both the chocolate chip and raisin cookies* (ad-hoc implicatures). Developmental work have reported mixed results about the development of implicature processing abilities. In the current work we use two time-sensitive methods (eye-tracking and tablet) to examine developmental gains in children’s ad-hoc implicature processing, and test whether one cause of toddlers’ consistent failure to process implicature is their difficulty with executive function - specifically their failure to inhibit responses toward a salient distractor (*inhibitory hypothesis*). Across three experiments, we present evidence for successful implicature computation by children as young as 3 years, substantial developmental gains in implicature computation in both paradigms, and support for the inhibitory hypothesis from the tablet paradigm. Our work contributes to the growing literature showing signs of pragmatic inference in young children."
@@ -206,10 +210,6 @@ Participants sat in a booster seat, approx. 60 cm away from the monitor of an SM
 
 ## Results
 
-```{r et_accuracy, fig.pos = "H", echo=FALSE, message=FALSE, fig.width = 6, fig.height = 4, fig.align='center', fig.cap='Proportion of 2- to 5-year-old children and adults looking to the target image as the utterance unfolds in Experiments 1A and 1B (rows), in different trial types (columns). Time 0 represents the target word onset, and time 0.78 represents the average target word offset. Proportion correct looking is defined by looks to the target divided by the total looks to both the target and the distractor. Example stimuli are shown in the bottom right hand corner for each condition; the named character emerged at the end of the trial to mark the correct target.'}
-grid::grid.raster(png::readPNG("figs/et-accuracy.png"))
-```
-
 ```{r expt1ttest, include=FALSE}
 ms <- d_et %>%
   filter(t.crit > 0.78 & t.crit <= 3) %>%
@@ -238,6 +238,10 @@ expt1.ttest.acc.4y.p = round(expt1.ttest.acc.4y$p.value, 3)
 First, we looked at the rate of accurate looking toward the target in each of trial types. Participants of all ages looked to the targets in both control-double and control-single trials reliably above chance (50%; Figure 1). Children of 4 years and above robustly looked to targets in inference trials (for 4-year-olds: $t$(`r expt1.ttest.acc.4y.df`) = `r expt1.ttest.acc.4y.t`, $p$ =`r expt1.ttest.acc.4y.p`). For example, upon hearing "Bert's plate has a carrot," 4-year-olds looked to the plate with only a carrot more than the plate with a carrot and a banana. 
 
 There were two additional interesting trends in children’s looking patterns: First, 2-year-olds did not disengage from distractors relative to their baseline bias prior to hearing the target word (also see Appendix), and were marginally *below* chance in their overall performance ($t$(`r expt1.ttest.acc.2y.df`) = `r expt1.ttest.acc.2y.t`, $p$ = `r expt1.ttest.acc.2y.p`). Second, even though older children’s correct look to inferential target exceeded look to distractor, it was lower than expected from previous studies; in @stiller2015’s paradigm, for instance, 4-year-olds selected the correct referent at approximately 75%, whereas in the current paradigm, even 5-year-olds looked to the target barely above 60%.
+
+```{r et_accuracy, fig.pos = "H", echo=FALSE, message=FALSE, fig.width = 6, fig.height = 4, fig.align='center', fig.cap='Proportion of 2- to 5-year-old children and adults looking to the target image as the utterance unfolds in Experiments 1A and 1B (rows), in different trial types (columns). Time 0 represents the target word onset, and time 0.78 represents the average target word offset. Proportion correct looking is defined by looks to the target divided by the total looks to both the target and the distractor. Example stimuli are shown in the bottom right hand corner for each condition; the named character emerged at the end of the trial to mark the correct target.'}
+grid::grid.raster(png::readPNG("figs/et-accuracy.png"))
+```
 
 ```{r expt1tab, echo = F, results = 'asis'}
 # accuracy
@@ -276,7 +280,7 @@ print(xtable(e1.tab,
 
 ```
 
-We fit a linear mixed-effects model^[All mixed-effects models were run using the ``lme4`` package, version 1.1-10 [@bates2014lme4]. The random effects structure for this model was as follows: ``(trial type | subid) + (age | item)`` All of our data and processing and analysis code can be viewed in the version control repository for this paper at: https://github.com/xxx (please note that the link is masked for anonymous review process).] to measure the effects of trial type and age on the proportion of children looking to the target between 0.8 and 4 seconds after the target noun onset (Table 2). We selected this time window because participants would have to wait until the end of target noun (0.8 seconds on average) to know they should switch to the inferential target, given the absence of a disambiguating continuation (e.g., “Elmo’s plate has a carrot and banana.”). The mixed model found a significant main effect of trial type and main effect of age: participants looked to the target significantly less in inference trials compared to control-single trials, and across all trial types, participants’ looking to target increased with age.
+We fit a linear mixed-effects model^[All mixed-effects models were run using the ``lme4`` package, version 1.1-10 [@bates2014lme4]. The random effects structure for this model was as follows: ``(trial type | subid) + (age | item)`` All of our data and processing and analysis code can be viewed in the version control repository for this paper at: https://github.com/ejyoon/simpimp.] to measure the effects of trial type and age on the proportion of children looking to the target between 0.8 and 4 seconds after the target noun onset (Table 2). We selected this time window because participants would have to wait until the end of target noun (0.8 seconds on average) to know they should switch to the inferential target, given the absence of a disambiguating continuation (e.g., “Elmo’s plate has a carrot and banana.”). The mixed model found a significant main effect of trial type and main effect of age: participants looked to the target significantly less in inference trials compared to control-single trials, and across all trial types, participants’ looking to target increased with age.
 
 One potential concern was that after each trial, feedback was given to indicate which of the two potential referents was the target, and thus it was possible that participants learned to identify the target based on the feedback. A linear mixed-effects model predicting accuracy based on order (first vs. second half of the trials) and age indicated no significant main effect of order, and no interaction between age and order (largest $\beta$ = 0.061, $p >.20$).
 
@@ -303,14 +307,13 @@ expt1.rt.int.beta <- round(summary(expt1.rt.lmer)$coef[6], 2)
 Next, we wanted to look at the participants’ processing speed: how quickly they made their responses upon hearing the utterance. For this, we selected trials on which participants were looking at the distractor at the point of disambiguation, and measured the average length of time prior to a switch to the target [@fernald2008].
 
 A linear mixed-effects model measuring the effects of trial type and age on switch time^[This model had the same random effects as the model for predicting accuracy] as revealed significant main effects of trial type ($\beta$ = `r expt1.rt.inf.beta`, $p =.004$) and age ($\beta$ = `r expt1.rt.age.beta`, $p =.004$) on the average RT, with no interaction (largest $\beta$ = `r expt1.rt.int.beta`, $p >.24$). Inference trials were overall slower than control trials, and participants reacted faster with increasing age in all trial types. 
+One question is whether 2-year-olds had difficulty switching correctly from the distractor to target, or whether they switched incorrectly away from the target to distractor. To explore this question, we looked at target- and distractor-initial trials separately, contingent on which item the child was looking toward from the onset of the target noun [@fernald2010]. The top panels in Figure 2 show the mean proportion of participants that switched from where they started in Experiment 1A. Thus, the increase in shift on distractor-initial trials is a correct response, whereas increase in shift on target-initial trials is an incorrect response. 
+
+Across all age groups, there was an initial increase in shift for both target-initial and distractor-initial trials, until the offset of the target word. Then age groups diverged in their looking pattern, and two-year-olds' struggle was evident: whereas older children's switches to distractor decreased and switches to target increased, two-year-olds' switches to distractor continued to *increase* after the target offset, whereas shift from distractor to target stayed the same. 
 
 ```{r et_onset1, fig.pos = "H", echo=FALSE, message=FALSE, fig.width = 6, fig.height = 4, fig.align='center', fig.cap='Onset contingency plot showing results from Experiments 1A and 1B. Trials were divided depending on where the participant was first looking: the green line indicates trials in which participants looked at distractor first and made switch to target, and orange line target first and switched to distractor. the size of the green shaded region indicates more switches made from distractor-to-target than target-to-distractor. The size of the orange shaded region represents more switches made from target-to-distractor than distractor-to-target.'}
 grid::grid.raster(png::readPNG("figs/et-onsetcont_fill2.png"))
 ```
-
-One question is whether 2-year-olds had difficulty switching correctly from the distractor to target, or whether they switched incorrectly away from the target to distractor. To explore this question, we looked at target- and distractor-initial trials separately, contingent on which item the child was looking toward from the onset of the target noun [@fernald2010]. The top panels in Figure 2 show the mean proportion of participants that switched from where they started in Experiment 1A. Thus, the increase in shift on distractor-initial trials is a correct response, whereas increase in shift on target-initial trials is an incorrect response. 
-
-Across all age groups, there was an initial increase in shift for both target-initial and distractor-initial trials, until the offset of the target word. Then age groups diverged in their looking pattern, and two-year-olds' struggle was evident: whereas older children's switches to distractor decreased and switches to target increased, two-year-olds' switches to distractor continued to *increase* after the target offset, whereas shift from distractor to target stayed the same. 
 
 ## Discussion
 
@@ -521,10 +524,6 @@ d_comp <- rbind(d_et_comp, d_ip_comp)
 #######################
 ```
 
-```{r ipaccrt, fig.pos = "H", echo=FALSE, message=FALSE, fig.width = 6, fig.height = 4.5, fig.align='center', fig.cap='Accuracy rates and reaction times in Experiment 2. Orange lines represent trials in which there were fewer features present (2-vs-1 for control-double and inference, 1-vs-1 for control-single) and green lines represent trials with more features (3-vs-1 for control-double and inference, 2-vs-2 for control-single).'}
-grid::grid.raster(png::readPNG("figs/ip_accrt2.png"))
-```
-
 ```{r expt3lm}
 ms <- d_ip %>%
   mutate(age_group = as.numeric(as.character(age_group)),
@@ -550,6 +549,13 @@ expt3.ttest.acc.3y.df = round(expt3.ttest.acc.3y$parameter, 2)
 expt3.ttest.acc.3y.t = round(expt3.ttest.acc.3y$statistic, 2)
 expt3.ttest.acc.3y.p = round(expt3.ttest.acc.3y$p.value, 3)
 
+```
+
+### Accuracy
+As in Experiments 1A and 1B, children across all ages were able to identify the target in control trials. In inference trials, all age groups showed higher accuracy than in eye-tracking (Figure 3). 4- and 5-year-olds’ performances were nearly at ceiling, and even 3-year-olds chose the inferential target above chance ($t$(`r expt3.ttest.acc.3y.df`) = `r expt3.ttest.acc.3y.t`, $p$ < 0.001). 2-year-olds’ performance did not differ from chance ($t$(`r expt3.ttest.acc.2y.df`) = `r expt3.ttest.acc.2y.t`, $p$ > .39). 
+
+```{r ipaccrt, fig.pos = "H", echo=FALSE, message=FALSE, fig.width = 6, fig.height = 4.5, fig.align='center', fig.cap='Accuracy rates and reaction times in Experiment 2. Orange lines represent trials in which there were fewer features present (2-vs-1 for control-double and inference, 1-vs-1 for control-single) and green lines represent trials with more features (3-vs-1 for control-double and inference, 2-vs-2 for control-single).'}
+grid::grid.raster(png::readPNG("figs/ip_accrt2.png"))
 ```
 
 ```{r expt3tb, echo = F, results = 'asis'}
@@ -587,9 +593,6 @@ expt3.acc.int2.beta <- round(summary(expt3.acc.lmer)$coef[12], 2)
 
 
 ```
-
-### Accuracy
-As in Experiments 1A and 1B, children across all ages were able to identify the target in control trials. In inference trials, all age groups showed higher accuracy than in eye-tracking (Figure 3). 4- and 5-year-olds’ performances were nearly at ceiling, and even 3-year-olds chose the inferential target above chance ($t$(`r expt3.ttest.acc.3y.df`) = `r expt3.ttest.acc.3y.t`, $p$ < 0.001). 2-year-olds’ performance did not differ from chance ($t$(`r expt3.ttest.acc.2y.df`) = `r expt3.ttest.acc.2y.t`, $p$ > .39). 
 
 A linear mixed-effects model predicting accuracy based on age, trial type and number of features (salience contrast; 2-vs-1 vs. 3-vs-1) showed a significant negative interaction of inference trial and 3-vs-1 ($\beta$ = `r expt3.acc.int1.beta`, $p = .036$). Thus, unlike control trials in which children’s performances did not differ by salience contrast, inference trials showed lower accuracy overall than 2-vs-1. This result was in support of our initial hypothesis that salience contrast may lead to greater struggle with the implicature task due to a higher demand for inhibiting response to distractor with greater salience. 
 
