@@ -10,24 +10,20 @@ document-params: "a4paper,man,apacite,floatsintext"
 bib-tex: "simpimp.bib"
 
 author-information:
-    - \author{Erica J. Yoon, Michael C. Frank}
+    - \author{Date of Submission:}
 
 affiliation-information:
     # Single affiliation
-    - \affiliation{Department of Psychology, Stanford University}
+    - \affiliation{September 12, 2016}
 
 author-note:
-    "Draft version 9/9/16. This paper has not been peer reviewed. Please do not copy or cite without author's permission. \\
-
-    We would like to acknowledge Asher Kaye and Stephanie Hsiang for their assistance in data collection, and thank the staff and families at Children's Discovery Museum of San Jose and Bing Nursery School. \\
-
-    Address all correspondence to Erica J. Yoon, Stanford University, Department of Psychology, Jordan Hall, 450 Serra Mall (Bldg. 420), Stanford, CA, 94305. E-mail: ejyoon@stanford.edu."
+    "No author note provided for anonymous review process."
 
 abstract: 
     "Language comprehension often requires making *implicatures*: for example, inferring that “I ate some of the cookies” implies the speaker ate some *but not all* (scalar implicatures); and “I ate the chocolate-chip cookies” where there are both chocolate chip cookies and raisin cookies in the context implies that the speaker ate the chocolate chip, *but not both the chocolate chip and raisin cookies* (ad-hoc implicatures). Developmental work have reported mixed results about the development of implicature processing abilities. In the current work we use two time-sensitive methods (eye-tracking and tablet) to examine developmental gains in children’s ad-hoc implicature processing, and test whether one cause of toddlers’ consistent failure to process implicature is their difficulty with executive function - specifically their failure to inhibit responses toward a salient distractor (*inhibitory hypothesis*). Across three experiments, we present evidence for successful implicature computation by children as young as 3 years, substantial developmental gains in implicature computation in both paradigms, and support for the inhibitory hypothesis from the tablet paradigm. Our work contributes to the growing literature showing signs of pragmatic inference in young children."
     
 keywords:
-    "Pragmatics; cognitive development; language processing; implicature; inhibitory control; eye-tracking; tablet
+    "Pragmatics; cognitive development; language processing; implicature; inhibitory control
 "
 ---
 
@@ -280,7 +276,7 @@ print(xtable(e1.tab,
 
 ```
 
-We fit a linear mixed-effects model^[All mixed-effects models were run using the ``lme4`` package, version 1.1-10 [@bates2014lme4]. The random effects structure for this model was as follows: ``(trial type | subid) + (age | item)`` All of our data and processing and analysis code can be viewed in the version control repository for this paper at: https://github.com/ejyoon/simpimp.] to measure the effects of trial type and age on the proportion of children looking to the target between 0.8 and 4 seconds after the target noun onset (Table 2). We selected this time window because participants would have to wait until the end of target noun (0.8 seconds on average) to know they should switch to the inferential target, given the absence of a disambiguating continuation (e.g., “Elmo’s plate has a carrot and banana.”). The mixed model found a significant main effect of trial type and main effect of age: participants looked to the target significantly less in inference trials compared to control-single trials, and across all trial types, participants’ looking to target increased with age.
+We fit a linear mixed-effects model^[All mixed-effects models were run using the ``lme4`` package, version 1.1-10 [@bates2014lme4]. The random effects structure for this model was as follows: ``(trial type | subid) + (age | item)`` All of our data and processing and analysis code can be viewed in the version control repository for this paper at: https://github.com/xxx (please note that the link is masked for anonymous review process).] to measure the effects of trial type and age on the proportion of children looking to the target between 0.8 and 4 seconds after the target noun onset (Table 2). We selected this time window because participants would have to wait until the end of target noun (0.8 seconds on average) to know they should switch to the inferential target, given the absence of a disambiguating continuation (e.g., “Elmo’s plate has a carrot and banana.”). The mixed model found a significant main effect of trial type and main effect of age: participants looked to the target significantly less in inference trials compared to control-single trials, and across all trial types, participants’ looking to target increased with age.
 
 One potential concern was that after each trial, feedback was given to indicate which of the two potential referents was the target, and thus it was possible that participants learned to identify the target based on the feedback. A linear mixed-effects model predicting accuracy based on order (first vs. second half of the trials) and age indicated no significant main effect of order, and no interaction between age and order (largest $\beta$ = 0.061, $p >.20$).
 
