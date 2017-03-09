@@ -41,11 +41,17 @@ There are two directories here:
 subject log, where the columns are:
 
 subid: subject id
+
 keep_drop: whether the subject should be excluded even before considering other experiment-specific criteria. e.g. if the subject’s age was not indicated on the demographics form
+
 expt: experiment version. 0 = Experiment 1A in manuscript. sc = Experiment 1B in manuscript. 
+
 age: numeric age calculated using: ( test date - birth date ) / 365
+
 age_group: binned into an age group by year
+
 sex: participant sex
+
 English: daily level of exposure to English as reported by parent. 4 (75%) is the passing criterion.
 
 
@@ -53,10 +59,16 @@ English: daily level of exposure to English as reported by parent. 4 (75%) is th
 order sheet, where the columns are:
 
 stimulus: slide name that got recorded on the raw data file
+
 order: whether the slide appeared on the first vs. second half of the trials
+
 trial_num: trial number (i.e. when this trial was shown)
+
 trial_type: trial type. cs = control-single; cd = control-double; inf = inference
+
 targetPos: position of the target referent; could be left (L) or right (R)
+
 distPos: position of the distractor
+
 targetOnset: the time at which the target noun was produced
 
