@@ -15,10 +15,10 @@ processed data file for Experiment 1B
 `ipad/simpimp_ipad_short.csv`:
 processed data file for Experiment 2
 
-## How eye-tracking processed data files were generated:
+## Required files for generating eye-tracking processed data files
 
-Need:
-1) processing scripts:
+### 1) processing scripts
+
 `eye-tracking/processing_scripts/simpimp_preprocess.R`:
 converting raw data into R-readable format, and then putting all the data from all subjects together into one csv file
 (or rather, two csv file: separately for each experiment, 1A and 1B)
@@ -26,7 +26,8 @@ converting raw data into R-readable format, and then putting all the data from a
 `eye-tracking/processing_scripts/simpimp_keepdrop.R`:
 binding information from the subject log and order sheet 
 
-2) raw data files: in `eye-tracking/raw_data`. 
+### 2) raw data files 
+in `eye-tracking/raw_data`. 
 
 There are two directories here:
 
@@ -34,7 +35,8 @@ There are two directories here:
 
 `new_data`: houses data files from the “old” eye-tracker
 
-3) info sheets
+### 3) info sheets
+
 `eye-tracking/info/simpimp_et_log.csv`:
 subject log, where the columns are:
 
