@@ -1,6 +1,10 @@
 # simpimp
 Children's processing of ad-hoc implicatures
 
+## Manuscript preprint
+
+can be accessed here: https://osf.io/preprints/psyarxiv/8p67h/
+
 ## Files required for knitting the manuscript file
 
 `paper/simpimp_paper.Rmd`:
