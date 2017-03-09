@@ -1,0 +1,20 @@
+---
+title: "simpimp_ipad_processing"
+author: "Erica Yoon"
+date: "March 28, 2016"
+output: html_document
+---
+
+```{r}
+library(data.table)
+library(dplyr)
+library(tidyr)
+d_ip <- fread("../ipad/simpimp_ipad_data.csv", data.table=FALSE)
+log <- fread("../ipad/simpimp_ipad_log.csv", data.table=FALSE)
+d_ip <- left_join(d_ip, log) %>%
+  mutate(age = signif(age, digits = 3)) %>%
+  select(subid,	age_group, age, sex, english, site,	trial_type, trial_num,	item_num,	correct, rt)
+write.csv(d_ip,
+                         "../ipad/simpimp_ipad_short.csv",
+          row.names=FALSE) 
+```
