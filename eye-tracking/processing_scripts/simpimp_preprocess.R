@@ -9,11 +9,9 @@
 rm(list = ls())
 # source("et_helper_old.R")
 source("et_helper.R")
-source("useful.R")
 
 # raw.data.path <- "../raw_data/old_data/"
 raw.data.path <- "../raw_data/new_data/"
-info.path <- "../info/"
 processed.data.path <- "../processed_data/"
 
 ## LOOP TO READ IN FILES
@@ -32,9 +30,9 @@ for (file.name in files) {
   all.data <- rbind(all.data, d)
 }
 
-d_old <- all.data
+# d_old <- all.data
 # d_new <- all.data
-d <- rbind(d_old, d_new)
+# d <- rbind(d_old, d_new)
 
 ## WRITE DATA OUT TO CSV FOR EASY ACCESS
 write.csv(all.data,paste(processed.data.path,
