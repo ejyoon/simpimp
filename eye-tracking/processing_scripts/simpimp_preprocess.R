@@ -7,13 +7,14 @@
 
 ## PRELIMINARIES
 rm(list = ls())
-setwd("/Users/ericang/Documents/Erica/Stanford/2013-Q2-Winter/Research/simpimpGIT/Data_analysis/")
-source("/Users/ericang/Documents/Erica/Stanford/2013-Q2-Winter/Research/simpimpGIT/Data_analysis/R_scripts/useful.R")
-source("/Users/ericang/Documents/Erica/Stanford/2013-Q2-Winter/Research/simpimpGIT/Data_analysis/R_scripts/et_helper.R")
+# source("et_helper_old.R")
+source("et_helper.R")
+source("useful.R")
 
-raw.data.path <- "raw_data/"
-info.path <- "info/"
-processed.data.path <- "processed_data/"
+# raw.data.path <- "../raw_data/old_data/"
+raw.data.path <- "../raw_data/new_data/"
+info.path <- "../info/"
+processed.data.path <- "../processed_data/"
 
 ## LOOP TO READ IN FILES
 all.data <- data.frame()
@@ -30,6 +31,10 @@ for (file.name in files) {
   ## now here's where data get bound together
   all.data <- rbind(all.data, d)
 }
+
+d_old <- all.data
+# d_new <- all.data
+d <- rbind(d_old, d_new)
 
 ## WRITE DATA OUT TO CSV FOR EASY ACCESS
 write.csv(all.data,paste(processed.data.path,
